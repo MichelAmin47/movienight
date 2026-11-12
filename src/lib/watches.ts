@@ -51,3 +51,28 @@ export async function deleteWatch(watchId: string) {
   const { error } = await supabase.from('watches').delete().eq('id', watchId)
   if (error) throw error
 }
+
+/**
+ * Inserts many undated watches ("watched earlier") with their ratings in two
+ * requests. Every movie must already exist in `movies`, and each movie may
+ * appear only once in `entries`.
+ */
+export async function createUndatedWatches(
+  householdId: string,
+  entries: { tmdbId: number; scores: Record<string, number> }[],
+) {
+  if (entries.length === 0) return
+  const watches = await supabase
+    .from('watches')
+    // watched_on is sent as an explicit null; leaving it out would default to today.
+    .insert(entries.map((entry) => ({ household_id: householdId, tmdb_id: entry.tmdbId, watched_on: null })))
+    .select('id, tmdb_id')
+  if (watches.error) throw watches.error
+
+  const watchIdByMovie = new Map(watches.data.map((w) => [w.tmdb_id, w.id]))
+  const rows = entries.flatMap((entry) => ratingRows(watchIdByMovie.get(entry.tmdbId)!, entry.scores))
+  if (rows.length) {
+    const ratings = await supabase.from('ratings').insert(rows)
+    if (ratings.error) throw ratings.error
+  }
+}

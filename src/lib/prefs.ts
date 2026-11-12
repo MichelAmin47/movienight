@@ -1,20 +1,21 @@
 import { useCallback, useState } from 'react'
-import { DEFAULT_MAX_AGE, type MaxAge } from './kijkwijzer'
 
 /** Per-device preferences (there is no settings table in the schema). */
 export type Prefs = {
-  /** Highest Kijkwijzer age shown in suggestions. */
-  maxAge: MaxAge
+  /** Also suggest movies with Kijkwijzer 16 or 18. */
+  showAdult: boolean
   /** Hide suggestions that have no Dutch certification. */
   hideUnknown: boolean
 }
 
 const KEY = 'filmavond.prefs'
-const defaults: Prefs = { maxAge: DEFAULT_MAX_AGE, hideUnknown: false }
+const defaults: Prefs = { showAdult: false, hideUnknown: false }
 
 function read(): Prefs {
   try {
-    return { ...defaults, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}')
+    // Read field by field so keys from older versions are dropped.
+    return { showAdult: stored.showAdult === true, hideUnknown: stored.hideUnknown === true }
   } catch {
     return defaults
   }

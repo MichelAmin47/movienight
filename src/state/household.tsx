@@ -54,9 +54,10 @@ async function loadHousehold(userId: string): Promise<HouseholdData> {
     supabase.from('people').select('*').eq('household_id', householdId).order('created_at'),
     supabase
       .from('watches')
+      // Newest first; watches without a date ("watched earlier") come last.
       .select('*, movie:movies(*), ratings(*)')
       .eq('household_id', householdId)
-      .order('watched_on', { ascending: false })
+      .order('watched_on', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false }),
     supabase.from('dismissed').select('tmdb_id').eq('household_id', householdId),
   ])

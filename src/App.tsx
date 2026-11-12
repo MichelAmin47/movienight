@@ -4,6 +4,7 @@ import { Layout } from './components/Layout'
 import { Button, ErrorNote, Spinner } from './components/ui'
 import { t } from './i18n/strings'
 import { AddWatch } from './pages/AddWatch'
+import { BulkAdd } from './pages/BulkAdd'
 import { Login } from './pages/Login'
 import { Onboarding } from './pages/Onboarding'
 import { Search } from './pages/Search'
@@ -43,6 +44,7 @@ function SignedIn({ userId }: { userId: string }) {
           <Route index element={<Watched />} />
           <Route path="watch/:id" element={<WatchDetail />} />
           <Route path="add" element={<Search />} />
+          <Route path="add/bulk" element={<BulkAdd />} />
           <Route path="add/:tmdbId" element={<AddWatch />} />
           <Route path="suggestions" element={<Suggestions />} />
           <Route path="stats" element={<Stats />} />

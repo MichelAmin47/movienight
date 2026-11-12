@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PersonBadge } from '../components/PersonBadge'
+import { PersonFilter } from '../components/PersonFilter'
 import { Poster } from '../components/Poster'
 import { Chip, PageTitle } from '../components/ui'
 import { t } from '../i18n/strings'
@@ -63,23 +63,7 @@ export function Watched() {
             {t.watched.sortScore}
           </Chip>
         </div>
-        {people.length > 1 && (
-          <div
-            className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
-            role="group"
-            aria-label={t.watched.filterLabel}
-          >
-            <Chip selected={personId === null} onClick={() => setPersonId(null)}>
-              {t.common.everyone}
-            </Chip>
-            {people.map((person) => (
-              <Chip key={person.id} selected={personId === person.id} onClick={() => setPersonId(person.id)}>
-                <PersonBadge person={person} size="sm" />
-                {person.name}
-              </Chip>
-            ))}
-          </div>
-        )}
+        <PersonFilter people={people} value={personId} onChange={setPersonId} label={t.watched.filterLabel} />
       </div>
 
       {visible.length === 0 ? (
