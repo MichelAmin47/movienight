@@ -8,6 +8,8 @@ import { Login } from './pages/Login'
 import { Onboarding } from './pages/Onboarding'
 import { Search } from './pages/Search'
 import { Settings } from './pages/Settings'
+import { WatchDetail } from './pages/WatchDetail'
+import { Watched } from './pages/Watched'
 import { AuthProvider, useAuth } from './state/auth'
 import { HouseholdProvider, useHousehold } from './state/household'
 
@@ -40,7 +42,8 @@ function SignedIn({ userId }: { userId: string }) {
     <HashRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<Placeholder title={t.watched.title} />} />
+          <Route index element={<Watched />} />
+          <Route path="watch/:id" element={<WatchDetail />} />
           <Route path="add" element={<Search />} />
           <Route path="add/:tmdbId" element={<AddWatch />} />
           <Route path="suggestions" element={<Placeholder title={t.suggestions.title} />} />
