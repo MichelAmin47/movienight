@@ -59,6 +59,16 @@ Implemented in `src/lib/suggestions.ts` (pure, unit tested):
    hidden.
 6. The top 20 are shown.
 
+**Nieuwe tips (shuffle).** The button draws a different set of 20 from a pool
+of the 80 best candidates by weighted random sampling without replacement:
+weight = (score − lowest score + 0.25)^(1/0.7), times 0.02 for movies shown in
+the last two shuffles. The result is displayed in random order. Each shuffle
+also widens the pool with at most 7 TMDB calls: page 2 of the recommendations
+of up to 5 liked movies, and one `discover/movie` call for the household's two
+favorite genres (well-rated movies, random page 1–5). Genre-based movies score
+from genre affinity only, so up to 15 pool places are kept for them. The same
+filters apply as in the default view.
+
 The age filter settings are stored per device in `localStorage`.
 
 ### Caching
