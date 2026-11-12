@@ -23,7 +23,7 @@ export function PersonFilter({
   if (people.length < 2) return null
   return (
     <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
-      <Chip selected={value === null} onClick={() => onChange(null)}>
+      <Chip selected={value === null} onClick={() => onChange(null)} className="px-3">
         {t.common.everyone}
       </Chip>
       {people.map((person) => (
