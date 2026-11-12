@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PersonBadge } from '../components/PersonBadge'
+import { PersonAvatar } from '../components/PersonAvatar'
 import { Poster } from '../components/Poster'
 import { StarsDisplay } from '../components/Stars'
 import { Card, PageTitle } from '../components/ui'
@@ -96,7 +96,7 @@ export function Stats() {
         <ul className="flex flex-col gap-3">
           {perPerson.map(({ person, count, avg, favorite, favoriteWatch }) => (
             <li key={person.id} className="flex items-center gap-3">
-              <PersonBadge person={person} />
+              <PersonAvatar person={person} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-bold">{person.name}</p>
                 {favorite && avg !== null ? (

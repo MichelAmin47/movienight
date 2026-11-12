@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { BackLink, MovieHeader } from '../components/MovieHeader'
-import { PersonBadge } from '../components/PersonBadge'
+import { PersonAvatar } from '../components/PersonAvatar'
 import { StarsDisplay } from '../components/Stars'
 import { Button, Card, ErrorNote } from '../components/ui'
 import { WatchForm, type WatchFormValues } from '../components/WatchForm'
@@ -94,7 +94,7 @@ export function WatchDetail() {
                   .filter((row) => row.rating)
                   .map(({ person, rating }) => (
                     <li key={person.id} className="flex items-center gap-3">
-                      <PersonBadge person={person} />
+                      <PersonAvatar person={person} />
                       <span className="min-w-0 flex-1 truncate font-bold">{person.name}</span>
                       <StarsDisplay value={rating!.score} className="text-2xl" />
                       <span className="sr-only">{t.watchForm.starLabel(person.name, rating!.score)}</span>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BackLink } from '../components/MovieHeader'
-import { PersonBadge } from '../components/PersonBadge'
+import { PersonAvatar } from '../components/PersonAvatar'
 import { Poster } from '../components/Poster'
 import { StarsInput } from '../components/Stars'
 import { Button, ErrorNote, PageTitle, Spinner, TextInput } from '../components/ui'
@@ -261,7 +261,7 @@ export function BulkAdd() {
                         <span className="ml-1 flex gap-1.5" aria-hidden>
                           {people.map((person) => (
                             <span key={person.id} className="flex items-center gap-0.5" title={person.name}>
-                              <PersonBadge person={person} size="sm" />
+                              <PersonAvatar person={person} size="sm" />
                               {item.scores[person.id] ?? '–'}
                             </span>
                           ))}
@@ -273,7 +273,7 @@ export function BulkAdd() {
                         {people.map((person) => (
                           <li key={person.id} className="flex items-center justify-between gap-2" title={person.name}>
                             <span className="flex min-w-0 items-center gap-2">
-                              <PersonBadge person={person} size="sm" />
+                              <PersonAvatar person={person} size="sm" />
                               <span className="truncate text-sm font-bold">{person.name}</span>
                             </span>
                             <StarsInput

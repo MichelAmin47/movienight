@@ -1,19 +1,47 @@
-import { useState, type FormEvent } from 'react'
+import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { t } from '../i18n/strings'
 import type { Person } from '../lib/database.types'
+import type { Crop } from '../lib/avatarCrop'
+import { deleteAvatar, loadImage, renderAvatar, uploadAvatar } from '../lib/avatars'
 import { supabase } from '../lib/supabase'
 import { useHousehold } from '../state/household'
-import { PERSON_COLORS, PERSON_EMOJIS, PersonBadge } from './PersonBadge'
+import { AvatarCropper } from './AvatarCropper'
+import { PERSON_COLORS, PERSON_EMOJIS, PersonAvatar } from './PersonAvatar'
 import { Button, ErrorNote, TextInput } from './ui'
 
-type Draft = { id: string | null; name: string; emoji: string; color: string }
+type Draft = {
+  id: string | null
+  name: string
+  emoji: string
+  color: string
+  /** The stored picture; set to null by "remove". */
+  avatarPath: string | null
+  /** A cropped picture that is uploaded when the form is saved. */
+  newAvatar: { blob: Blob; url: string } | null
+}
 
 /** List of family members with inline add / edit / delete. */
 export function PeopleEditor() {
   const { household, people, refresh } = useHousehold()
-  const [draft, setDraft] = useState<Draft | null>(null)
+  const [draft, setDraftState] = useState<Draft | null>(null)
+  const [cropImage, setCropImage] = useState<HTMLImageElement | null>(null)
+  const pickInput = useRef<HTMLInputElement>(null)
+  const cameraInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  /** Replaces the draft and frees the preview of a picture that is dropped. */
+  function setDraft(next: Draft | null) {
+    if (draft?.newAvatar && draft.newAvatar !== next?.newAvatar) URL.revokeObjectURL(draft.newAvatar.url)
+    setDraftState(next)
+  }
+
+  const closeCropper = useCallback(() => {
+    setCropImage((image) => {
+      if (image) URL.revokeObjectURL(image.src)
+      return null
+    })
+  }, [])
 
   if (!household) return null
 
@@ -23,6 +51,8 @@ export function PeopleEditor() {
       name: '',
       emoji: PERSON_EMOJIS[people.length % PERSON_EMOJIS.length],
       color: PERSON_COLORS[people.length % PERSON_COLORS.length],
+      avatarPath: null,
+      newAvatar: null,
     })
   }
 
@@ -32,37 +62,89 @@ export function PeopleEditor() {
       name: person.name,
       emoji: person.emoji ?? PERSON_EMOJIS[0],
       color: person.color ?? PERSON_COLORS[0],
+      avatarPath: person.avatar_path,
+      newAvatar: null,
     })
   }
 
-  async function run(action: () => PromiseLike<{ error: { message: string } | null }>) {
+  async function pickFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // so the same photo can be picked again
+    if (!file) return
+    setError(null)
+    try {
+      setCropImage(await loadImage(file))
+    } catch {
+      setError(t.people.avatarUnsupported)
+    }
+  }
+
+  async function confirmCrop(crop: Crop) {
+    if (!cropImage || !draft) return
+    setBusy(true)
+    try {
+      const blob = await renderAvatar(cropImage, crop)
+      setDraft({ ...draft, newAvatar: { blob, url: URL.createObjectURL(blob) } })
+      closeCropper()
+    } catch {
+      closeCropper()
+      setError(t.people.avatarUnsupported)
+    }
+    setBusy(false)
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    if (!draft || !household) return
+    const name = draft.name.trim()
+    if (!name) return
     setBusy(true)
     setError(null)
-    const { error } = await action()
-    if (error) setError(t.common.genericError)
-    else {
+    // New people get their id here, because the picture's path contains it.
+    const id = draft.id ?? crypto.randomUUID()
+    const previousPath = people.find((p) => p.id === draft.id)?.avatar_path ?? null
+    let avatarPath = draft.avatarPath
+    let uploadedPath: string | null = null
+    try {
+      if (draft.newAvatar) {
+        uploadedPath = await uploadAvatar(household.id, id, draft.newAvatar.blob)
+        avatarPath = uploadedPath
+      }
+    } catch {
+      setError(t.people.avatarSaveError)
+      setBusy(false)
+      return
+    }
+    const values = { name, emoji: draft.emoji, color: draft.color, avatar_path: avatarPath }
+    const { error } = draft.id
+      ? await supabase.from('people').update(values).eq('id', draft.id)
+      : await supabase.from('people').insert({ ...values, id, household_id: household.id })
+    if (error) {
+      if (uploadedPath) await deleteAvatar(uploadedPath)
+      setError(t.common.genericError)
+    } else {
+      if (previousPath && previousPath !== avatarPath) await deleteAvatar(previousPath)
       setDraft(null)
       await refresh()
     }
     setBusy(false)
   }
 
-  function save(e: FormEvent) {
-    e.preventDefault()
-    if (!draft || !household) return
-    const values = { name: draft.name.trim(), emoji: draft.emoji, color: draft.color }
-    if (!values.name) return
-    void run(() =>
-      draft.id
-        ? supabase.from('people').update(values).eq('id', draft.id)
-        : supabase.from('people').insert({ ...values, household_id: household.id }),
-    )
+  async function remove(person: Person) {
+    if (!window.confirm(t.people.confirmDelete(person.name))) return
+    setBusy(true)
+    setError(null)
+    const { error } = await supabase.from('people').delete().eq('id', person.id)
+    if (error) setError(t.common.genericError)
+    else {
+      if (person.avatar_path) await deleteAvatar(person.avatar_path)
+      setDraft(null)
+      await refresh()
+    }
+    setBusy(false)
   }
 
-  function remove(person: Person) {
-    if (!window.confirm(t.people.confirmDelete(person.name))) return
-    void run(() => supabase.from('people').delete().eq('id', person.id))
-  }
+  const hasPicture = Boolean(draft?.newAvatar || draft?.avatarPath)
 
   return (
     <div className="flex flex-col gap-3">
@@ -70,7 +152,7 @@ export function PeopleEditor() {
       <ul className="flex flex-col gap-2">
         {people.map((person) => (
           <li key={person.id} className="flex items-center gap-3 rounded-2xl bg-raised p-2 pl-3">
-            <PersonBadge person={person} />
+            <PersonAvatar person={person} />
             <span className="min-w-0 flex-1 truncate font-bold">{person.name}</span>
             <Button variant="ghost" className="px-3" onClick={() => startEdit(person)}>
               {t.common.edit}
@@ -84,7 +166,11 @@ export function PeopleEditor() {
       {draft ? (
         <form onSubmit={save} className="flex flex-col gap-4 rounded-2xl border border-line p-3">
           <div className="flex items-center gap-3">
-            <PersonBadge person={draft} size="lg" />
+            <PersonAvatar
+              person={{ ...draft, avatar_path: draft.avatarPath }}
+              src={draft.newAvatar?.url}
+              size="xl"
+            />
             <TextInput
               autoFocus
               required
@@ -95,6 +181,30 @@ export function PeopleEditor() {
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
           </div>
+          <fieldset>
+            <legend className="mb-2 text-sm font-bold text-muted">{t.people.avatarLabel}</legend>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" disabled={busy} onClick={() => pickInput.current?.click()}>
+                {t.people.avatarPick}
+              </Button>
+              <Button variant="secondary" disabled={busy} onClick={() => cameraInput.current?.click()}>
+                {t.people.avatarTake}
+              </Button>
+              {hasPicture && (
+                <Button
+                  variant="danger"
+                  disabled={busy}
+                  aria-label={t.people.avatarRemoveLabel}
+                  onClick={() => setDraft({ ...draft, avatarPath: null, newAvatar: null })}
+                >
+                  {t.people.avatarRemove}
+                </Button>
+              )}
+            </div>
+            {/* Without `capture` phones offer the photo library, with it the camera opens directly. */}
+            <input ref={pickInput} type="file" accept="image/*" hidden onChange={pickFile} />
+            <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={pickFile} />
+          </fieldset>
           <fieldset>
             <legend className="mb-2 text-sm font-bold text-muted">{t.people.emojiLabel}</legend>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-1">
@@ -143,7 +253,7 @@ export function PeopleEditor() {
                 disabled={busy}
                 onClick={() => {
                   const person = people.find((p) => p.id === draft.id)
-                  if (person) remove(person)
+                  if (person) void remove(person)
                 }}
               >
                 {t.common.delete}
@@ -155,6 +265,9 @@ export function PeopleEditor() {
         <Button variant="secondary" onClick={startNew}>
           + {t.people.addPerson}
         </Button>
+      )}
+      {cropImage && draft && (
+        <AvatarCropper image={cropImage} busy={busy} onCancel={closeCropper} onConfirm={confirmCrop} />
       )}
     </div>
   )

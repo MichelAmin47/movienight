@@ -32,6 +32,8 @@ export type Database = {
           name: string
           emoji: string | null
           color: string | null
+          /** Path in the private `avatars` bucket; null means "show the emoji". */
+          avatar_path: string | null
           created_at: string
         }
         Insert: {
@@ -40,6 +42,7 @@ export type Database = {
           name: string
           emoji?: string | null
           color?: string | null
+          avatar_path?: string | null
           created_at?: string
         }
         Update: {
@@ -48,6 +51,7 @@ export type Database = {
           name?: string
           emoji?: string | null
           color?: string | null
+          avatar_path?: string | null
           created_at?: string
         }
         Relationships: [
