@@ -46,7 +46,9 @@ const RECENT_SHUFFLES = 2
 
 export const TIPS_CACHE_KEY = 'filmavond.tips'
 export const RECENT_KEY = 'filmavond.recentTips'
-const CACHE_VERSION = 1
+const CACHE_VERSION = 2
+/** Watchlist movies mixed into a list, on top of the fresh suggestions. */
+export const MAX_WATCHLIST_TIPS = 3
 /** Cached lists kept, most recent first (a few, so switching person back is instant). */
 const CACHE_ENTRIES = 5
 
@@ -63,6 +65,8 @@ export type TipDraft = {
   releaseDate: string
   posterPath: string | null
   overview: string
+  /** From the TMDB list result; replaced by the `movies` row's genres once that is looked up. */
+  genreIds: number[]
   explanation: Explanation
 }
 
@@ -75,7 +79,10 @@ export type TipList = {
   personId: string | null
   showAdult: boolean
   hideUnknown: boolean
-  /** What the page shows, in order. */
+  /**
+   * What the page shows, in order: up to 20 movies that are not on the
+   * watchlist, plus at most `MAX_WATCHLIST_TIPS` that are.
+   */
   tips: Tip[]
   /** Next tips that already passed the filters. */
   buffer: Tip[]
@@ -91,6 +98,8 @@ export type TipsInputs = {
     ratings: { person_id: string; score: number }[]
   }[]
   dismissed: number[]
+  /** Movies on the "Willen we zien" list. */
+  watchlist: number[]
   personId: string | null
   showAdult: boolean
   hideUnknown: boolean
@@ -113,7 +122,7 @@ export type TipsDeps = {
   getRecommendations: (tmdbId: number, page?: number) => Promise<TmdbMovieSummary[]>
   ensureMovies: (
     tmdbIds: number[],
-  ) => Promise<Map<number, { certification_nl: string | null; runtime: number | null }>>
+  ) => Promise<Map<number, { certification_nl: string | null; runtime: number | null; genre_ids?: number[] }>>
   discoverMovies: (genreIds: number[], page: number) => Promise<TmdbMovieSummary[]>
   getGenres: () => Promise<Record<number, string>>
   /** Where finished lists are cached (localStorage); null when unavailable. */
@@ -141,7 +150,8 @@ function hash(text: string): string {
 
 /**
  * Cache key for a set of inputs: watched ids with their ratings, dismissed
- * ids, the filter settings and the person toggle. Order does not matter.
+ * ids, watchlist ids, the filter settings and the person toggle. Order does
+ * not matter.
  */
 export function tipsKey(inputs: TipsInputs): string {
   const watches = inputs.watches
@@ -153,7 +163,9 @@ export function tipsKey(inputs: TipsInputs): string {
           .join(',')}`,
     )
     .sort()
-  const dismissed = [...new Set(inputs.dismissed)].sort((a, b) => a - b)
+  const sorted = (ids: number[]) => [...new Set(ids)].sort((a, b) => a - b)
+  const dismissed = sorted(inputs.dismissed)
+  const watchlist = sorted(inputs.watchlist)
   return hash(
     JSON.stringify([
       CACHE_VERSION,
@@ -163,6 +175,7 @@ export function tipsKey(inputs: TipsInputs): string {
       inputs.hideUnknown,
       watches,
       dismissed,
+      watchlist,
     ]),
   )
 }
@@ -180,6 +193,17 @@ export function withoutIds(list: TipList, ids: Set<number>): TipList {
     ? list.tips.flatMap((tip) => (inList(tip) ? buffer.splice(0, 1) : [tip]))
     : list.tips
   return { ...list, tips, buffer, queue: list.queue.filter((tip) => !inList(tip)) }
+}
+
+/**
+ * Moves tips from the buffer to the end of the visible ones until there are
+ * `MAX_SUGGESTIONS` that are not on the watchlist (or the buffer is empty).
+ */
+export function toppedUp(list: TipList, watchlist: Set<number>): TipList {
+  const fresh = list.tips.filter((tip) => !watchlist.has(tip.id)).length
+  const missing = Math.min(MAX_SUGGESTIONS - fresh, list.buffer.length)
+  if (missing <= 0) return list
+  return { ...list, tips: [...list.tips, ...list.buffer.slice(0, missing)], buffer: list.buffer.slice(missing) }
 }
 
 function sameTips(a: Tip[], b: Tip[]): boolean {
@@ -209,6 +233,8 @@ export class TipsStore {
   private listeners = new Set<() => void>()
   private inputs: TipsInputs | null = null
   private key: string | null = null
+  /** The key of the same inputs without the watchlist, to recognise a change of only the watchlist. */
+  private baseKey: string | null = null
   /** Bumped whenever running work becomes obsolete; its result is then dropped. */
   private generation = 0
   /** Dismissed during this visit, before the household data has caught up. */
@@ -249,6 +275,7 @@ export class TipsStore {
   dispose() {
     this.generation++
     this.key = null
+    this.baseKey = null
     this.refilling = false
     this.set({ computing: false, shuffling: false })
   }
@@ -272,7 +299,20 @@ export class TipsStore {
     const inputs = this.effectiveInputs()
     const key = tipsKey(inputs)
     if (key === this.key) return
+    const baseKey = tipsKey({ ...inputs, watchlist: [] })
+    const onlyWatchlist = baseKey === this.baseKey
+    this.baseKey = baseKey
     this.key = key
+    const shown = this.state.list
+    if (onlyWatchlist && shown && !this.state.computing && !this.state.shuffling) {
+      // A star was tapped on the list on screen. Nothing moves or disappears
+      // under the user's finger: the list is only topped up so it keeps 20
+      // movies that are not on the watchlist. It keeps its old key, so the
+      // exact list for the new watchlist is computed on the next visit.
+      this.set({ list: toppedUp(shown, new Set(inputs.watchlist)) })
+      this.refill()
+      return
+    }
     // Whatever was being computed or waiting was for other inputs.
     const generation = ++this.generation
     this.refilling = false
@@ -364,11 +404,18 @@ export class TipsStore {
     if (!this.inputs) return null
     const previousKey = this.key
     this.hidden.add(tmdbId)
-    const key = (this.key = tipsKey(this.effectiveInputs()))
+    const inputs = this.effectiveInputs()
+    const key = (this.key = tipsKey(inputs))
+    this.baseKey = tipsKey({ ...inputs, watchlist: [] })
+    // A watchlist movie came on top of the 20 fresh ones, so it leaves without a replacement.
+    const without = (list: TipList) =>
+      inputs.watchlist.includes(tmdbId)
+        ? { ...list, tips: list.tips.filter((tip) => tip.id !== tmdbId) }
+        : withoutIds(list, new Set([tmdbId]))
     // A list that was up to date, minus this movie, is exactly the list for
     // the new inputs: it takes the new key and nothing is computed again.
     const edit = (list: TipList | null) =>
-      list && { ...withoutIds(list, new Set([tmdbId])), key: list.key === previousKey ? key : list.key }
+      list && { ...without(list), key: list.key === previousKey ? key : list.key }
     const { list, staged } = this.state
     const index = list ? list.tips.findIndex((tip) => tip.id === tmdbId) : -1
     const next = edit(list)
@@ -392,7 +439,10 @@ export class TipsStore {
     if (!list || this.refilling || list.buffer.length >= REFILL_BELOW || list.queue.length === 0) return
     this.refilling = true
     const { generation, shown } = this
-    void this.fill(list.queue, BUFFER_SIZE - list.buffer.length, list, DETAIL_BATCH * 4).then(({ ready, queue }) => {
+    const starred = new Set(this.inputs?.watchlist)
+    // The buffer only ever holds movies that are not on the watchlist.
+    const candidates = list.queue.filter((draft) => !starred.has(draft.id))
+    void this.fill(candidates, BUFFER_SIZE - list.buffer.length, list, DETAIL_BATCH * 4).then(({ ready, queue }) => {
       if (generation !== this.generation) return
       this.refilling = false
       const current = this.state.list
@@ -400,11 +450,7 @@ export class TipsStore {
       if (!current || shown !== this.shown) return
       const next = withoutIds({ ...current, buffer: [...current.buffer, ...ready], queue }, this.hidden)
       // Dismissals that found the buffer empty left the list short: add to the end.
-      const missing = Math.min(MAX_SUGGESTIONS - next.tips.length, next.buffer.length)
-      const filled =
-        missing > 0
-          ? { ...next, tips: [...next.tips, ...next.buffer.slice(0, missing)], buffer: next.buffer.slice(missing) }
-          : next
+      const filled = toppedUp(next, new Set(this.inputs?.watchlist))
       this.set({ list: filled })
       if (filled.key === this.key && !this.state.staged) this.save(filled)
       this.refill()
@@ -517,8 +563,27 @@ export class TipsStore {
     return { list: built.list, failed: loaded.failed || built.failed }
   }
 
+  /**
+   * Turns candidates, best first, into a list: 20 movies that are not on the
+   * watchlist (plus the buffer), and on top of those the first
+   * `MAX_WATCHLIST_TIPS` candidates that are, each at its own place in the
+   * order. Other watchlist movies are left out.
+   */
   private async build(order: TipDraft[], inputs: TipsInputs): Promise<{ list: TipList; failed: boolean }> {
-    const { ready, queue, failed } = await this.fill(order, MAX_SUGGESTIONS + BUFFER_SIZE, inputs, MAX_DETAIL_LOOKUPS)
+    const watchlist = new Set(inputs.watchlist)
+    const starred = order.filter((draft) => watchlist.has(draft.id)).slice(0, MAX_WATCHLIST_TIPS)
+    const fresh = watchlist.size ? order.filter((draft) => !watchlist.has(draft.id)) : order
+    const filled = await this.fill(fresh, MAX_SUGGESTIONS + BUFFER_SIZE, inputs, MAX_DETAIL_LOOKUPS)
+    const { ready, queue } = filled
+    let { failed } = filled
+    let tips = ready.slice(0, MAX_SUGGESTIONS)
+    if (starred.length > 0) {
+      // Watchlist movies are already in the `movies` table, so this costs no TMDB calls.
+      const extra = await this.fill(starred, starred.length, inputs, starred.length)
+      failed ||= extra.failed
+      const place = new Map(order.map((draft, index) => [draft.id, index]))
+      tips = [...tips, ...extra.ready].sort((a, b) => place.get(a.id)! - place.get(b.id)!)
+    }
     return {
       list: {
         key: tipsKey(inputs),
@@ -526,7 +591,7 @@ export class TipsStore {
         personId: inputs.personId,
         showAdult: inputs.showAdult,
         hideUnknown: inputs.hideUnknown,
-        tips: ready.slice(0, MAX_SUGGESTIONS),
+        tips,
         buffer: ready.slice(MAX_SUGGESTIONS),
         queue,
       },
@@ -564,7 +629,12 @@ export class TipsStore {
         const certification = movie?.certification_nl ?? null
         const allowed = isAllowed(certification, filter.showAdult)
         if (allowed === false || (allowed === null && filter.hideUnknown)) continue
-        ready.push({ ...draft, certification, runtime: movie?.runtime ?? null })
+        ready.push({
+          ...draft,
+          genreIds: movie?.genre_ids ?? draft.genreIds,
+          certification,
+          runtime: movie?.runtime ?? null,
+        })
       }
     }
     return { ready, queue: order.slice(index), failed }
@@ -579,6 +649,7 @@ function toDraft(candidate: Candidate, genreNames: Record<number, string> | null
     releaseDate: movie.release_date,
     posterPath: movie.poster_path,
     overview: movie.overview,
+    genreIds: movie.genre_ids,
     explanation:
       candidate.sources.length > 0
         ? { kind: 'sources', titles: candidate.sources.slice(0, 2).map((source) => source.title) }

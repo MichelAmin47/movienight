@@ -13,7 +13,7 @@ import { useHousehold } from '../state/household'
 export function AddWatch() {
   const tmdbId = Number(useParams().tmdbId)
   const navigate = useNavigate()
-  const { household, refresh } = useHousehold()
+  const { household, refresh, watchlistIds, toggleWatchlist } = useHousehold()
   const [movie, setMovie] = useState<Movie | null>(null)
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -32,6 +32,9 @@ export function AddWatch() {
   async function save(values: WatchFormValues) {
     if (!household) return
     const watchId = await createWatch(household.id, tmdbId, values)
+    // Watched now, so it leaves "Willen we zien". The watch is saved either
+    // way; if this fails the movie simply stays on the list.
+    if (watchlistIds.has(tmdbId)) await toggleWatchlist(tmdbId)
     await refresh()
     navigate(`/watch/${watchId}`, { replace: true })
   }

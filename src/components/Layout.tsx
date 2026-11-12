@@ -5,7 +5,7 @@ const items = [
   { to: '/', icon: '🎬', label: t.nav.watched, end: true },
   { to: '/suggestions', icon: '✨', label: t.nav.suggestions },
   { to: '/add', icon: '➕', label: t.nav.add },
-  { to: '/stats', icon: '📊', label: t.nav.stats },
+  { to: '/watchlist', icon: '⭐', label: t.nav.watchlist },
   { to: '/settings', icon: '⚙️', label: t.nav.settings },
 ]
 
@@ -38,7 +38,7 @@ export function Layout() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs font-bold ${
+                  `flex min-h-16 flex-col items-center gap-0.5 px-0.5 pt-2 pb-1 text-center text-xs leading-tight font-bold ${
                     isActive ? 'text-accent' : 'text-muted'
                   }`
                 }

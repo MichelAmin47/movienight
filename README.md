@@ -35,7 +35,10 @@ row. A watch without a date (`watched_on` is null) means "watched at some
 earlier time"; it is shown as *Eerder gekeken*, sorts after all dated watches,
 and counts fully for suggestions and stats. *Snel toevoegen* (`/add/bulk`) adds
 many such watches at once to backfill the family's history. `movies` is a shared cache of TMDB data, `dismissed` holds suggestions the
-family is not interested in.
+family is not interested in, and `watchlist` holds the movies the family still
+wants to watch (*Willen we zien*). A movie is starred from a tip, a search
+result or its detail page (`/movie/:tmdbId`); saving it as watched takes it off
+the list again.
 
 A second parent with their own email address logs in, copies the code shown on
 the welcome screen, and the first parent pastes it under
@@ -57,7 +60,9 @@ Implemented in `src/lib/suggestions.ts` (pure, unit tested):
    dates. Movies rated 16 or 18 are hidden unless *16+ films tonen* is on.
    Movies without a certification are labelled "Leeftijd onbekend" and can be
    hidden.
-6. The top 20 are shown.
+6. The top 20 that are not on the watchlist are shown. On top of those, at
+   most 3 watchlist movies are mixed in: the best scored ones, each at its
+   scored position, with a filled star. Other watchlist movies are left out.
 
 **Nieuwe tips (shuffle).** The button draws a different set of 20 from a pool
 of the 80 best candidates by weighted random sampling without replacement:
@@ -67,7 +72,9 @@ also widens the pool with at most 7 TMDB calls: page 2 of the recommendations
 of up to 5 liked movies, and one `discover/movie` call for the household's two
 favorite genres (well-rated movies, random page 1–5). Genre-based movies score
 from genre affinity only, so up to 15 pool places are kept for them. The same
-filters apply as in the default view.
+filters apply as in the default view, and so does the watchlist rule: 20
+movies that are not on the watchlist, plus the first 3 watchlist movies the
+sampling draws.
 
 The age filter settings are stored per device in `localStorage`.
 
@@ -75,13 +82,16 @@ The age filter settings are stored per device in `localStorage`.
 (recommendations, ranking and the certification lookups for 20 tips plus a
 buffer of 8) before the page shows it; until then the page shows a skeleton.
 The finished list is cached in `localStorage`, keyed by a hash of its inputs
-(watched movies and ratings, dismissed movies, filters, selected person), so a
+(watched movies and ratings, dismissed movies, watchlist, filters, selected
+person), so a
 revisit with the same inputs shows it at once without any request. When the
 inputs change, the old list stays on screen while the new one is computed and
 is then replaced in one go, or, when the user is scrolled down or the carousel
 is spinning, behind a *Nieuwe tips beschikbaar* button. A shuffle is stored as
 the current list in the same way. Dismissing a movie replaces only that tile
-with the next tip from the buffer.
+with the next tip from the buffer. Starring a tip leaves the list on screen as
+it is (one more tip is added at the end to keep 20 unstarred ones); the exact
+list for the new watchlist is computed on the next visit.
 
 ### Caching
 

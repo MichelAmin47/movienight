@@ -181,6 +181,27 @@ export type Database = {
           },
         ]
       }
+      watchlist: {
+        Row: { household_id: string; tmdb_id: number; added_at: string; note: string | null }
+        Insert: { household_id: string; tmdb_id: number; added_at?: string; note?: string | null }
+        Update: { household_id?: string; tmdb_id?: number; added_at?: string; note?: string | null }
+        Relationships: [
+          {
+            foreignKeyName: 'watchlist_household_id_fkey'
+            columns: ['household_id']
+            isOneToOne: false
+            referencedRelation: 'households'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'watchlist_tmdb_id_fkey'
+            columns: ['tmdb_id']
+            isOneToOne: false
+            referencedRelation: 'movies'
+            referencedColumns: ['tmdb_id']
+          },
+        ]
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -201,3 +222,4 @@ export type Movie = Tables['movies']['Row']
 export type MovieInsert = Tables['movies']['Insert']
 export type Watch = Tables['watches']['Row']
 export type Rating = Tables['ratings']['Row']
+export type WatchlistRow = Tables['watchlist']['Row']

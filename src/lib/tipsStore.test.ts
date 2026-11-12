@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { seededRandom } from './suggestions'
-import { BUFFER_SIZE, REFILL_BELOW, tipsKey, TipsStore, withoutIds, type Tip, type TipList, type TipsDeps, type TipsInputs } from './tipsStore'
+import { BUFFER_SIZE, MAX_WATCHLIST_TIPS, REFILL_BELOW, tipsKey, TipsStore, withoutIds, type Tip, type TipList, type TipsDeps, type TipsInputs } from './tipsStore'
 import type { TmdbMovieSummary } from './tmdb'
 
 const SOURCES = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -15,6 +15,7 @@ const inputs = (patch: Partial<TipsInputs> = {}): TipsInputs => ({
   householdId: 'h1',
   watches: SOURCES.map((id) => watch(id)),
   dismissed: [],
+  watchlist: [],
   personId: null,
   showAdult: false,
   hideUnknown: false,
@@ -59,7 +60,7 @@ function setup(shared: { storage?: ReturnType<typeof memoryStorage>; canSwap?: (
     ensureMovies: async (ids) => {
       calls.details++
       await delay(3)
-      return new Map(ids.map((id) => [id, { certification_nl: certification(id), runtime: 90 }]))
+      return new Map(ids.map((id) => [id, { certification_nl: certification(id), runtime: 90, genre_ids: [10, 20] }]))
     },
     discoverMovies: async () => {
       await delay(2)
@@ -244,6 +245,121 @@ describe('TipsStore', () => {
   })
 })
 
+describe('TipsStore with a watchlist', () => {
+  /** The default list without a watchlist, to pick watchlist movies from. */
+  async function baseline() {
+    const { store, idle } = setup()
+    store.setInputs(inputs())
+    await idle()
+    const { tips, buffer } = store.getState().list!
+    return [...ids(tips), ...ids(buffer)]
+  }
+
+  it('shows 20 movies that are not on the watchlist plus the 3 best that are, at their scored place', async () => {
+    const ranked = await baseline()
+    // Five scored candidates on the watchlist, and one movie that is not a candidate at all.
+    const watchlist = [ranked[1], ranked[4], ranked[6], ranked[9], ranked[12], 999_999]
+    const { store, idle } = setup()
+    store.setInputs(inputs({ watchlist }))
+    await idle()
+
+    const tips = ids(store.getState().list!.tips)
+    const starred = tips.filter((id) => watchlist.includes(id))
+    expect(starred).toEqual([ranked[1], ranked[4], ranked[6]])
+    expect(tips.filter((id) => !watchlist.includes(id))).toHaveLength(20)
+    expect(tips).toHaveLength(20 + MAX_WATCHLIST_TIPS)
+    // Same relative order as without a watchlist.
+    expect(tips).toEqual(ranked.filter((id) => tips.includes(id)))
+    expect(tips.indexOf(ranked[1])).toBe(1)
+    const { buffer, queue } = store.getState().list!
+    expect([...ids(buffer), ...queue.map((draft) => draft.id)].some((id) => watchlist.includes(id))).toBe(false)
+  })
+
+  it('applies the age filter to watchlist movies too', async () => {
+    const { store, idle } = setup()
+    store.setInputs(inputs({ showAdult: true }))
+    await idle()
+    const adult = ids(store.getState().list!.tips).find((id) => certification(id) === '16')!
+
+    const filtered = setup()
+    filtered.store.setInputs(inputs({ watchlist: [adult] }))
+    await filtered.idle()
+    expect(ids(filtered.store.getState().list!.tips)).not.toContain(adult)
+    expect(filtered.store.getState().list!.tips).toHaveLength(20)
+  })
+
+  it('draws at most 3 watchlist movies in a shuffle, next to 20 others', async () => {
+    const ranked = await baseline()
+    const watchlist = ranked.slice(0, 10)
+    const { store, idle } = setup()
+    store.setInputs(inputs({ watchlist }))
+    await idle()
+    await store.shuffle()
+
+    const tips = ids(store.getState().list!.tips)
+    expect(tips.filter((id) => watchlist.includes(id))).toHaveLength(MAX_WATCHLIST_TIPS)
+    expect(tips.filter((id) => !watchlist.includes(id))).toHaveLength(20)
+  })
+
+  it('keeps the list in place when a visible tip is starred, and tops it up to 20 fresh ones', async () => {
+    const { store, idle, calls } = setup()
+    store.setInputs(inputs())
+    await idle()
+    const before = ids(store.getState().list!.tips)
+    const next = store.getState().list!.buffer[0].id
+    const recommendations = calls.recommendations
+
+    store.setInputs(inputs({ watchlist: [before[3]] }))
+    expect(store.getState().computing).toBe(false)
+    expect(ids(store.getState().list!.tips)).toEqual([...before, next])
+    expect(calls.recommendations).toBe(recommendations)
+
+    // Unstarring leaves the list alone as well.
+    store.setInputs(inputs())
+    expect(ids(store.getState().list!.tips)).toEqual([...before, next])
+  })
+
+  it('caches per watchlist: a new visit with another watchlist does not reuse the list as is', async () => {
+    const ranked = await baseline()
+    const storage = memoryStorage()
+    const first = setup({ storage })
+    first.store.setInputs(inputs())
+    await first.idle()
+
+    const second = setup({ storage })
+    second.store.setInputs(inputs({ watchlist: ranked.slice(0, 5) }))
+    expect(second.store.getState().computing).toBe(true)
+    await second.idle()
+    const tips = ids(second.store.getState().list!.tips)
+    expect(tips.filter((id) => ranked.slice(0, 5).includes(id))).toEqual(ranked.slice(0, 3))
+
+    // The same watchlist again comes straight from the cache.
+    const third = setup({ storage })
+    third.store.setInputs(inputs({ watchlist: ranked.slice(0, 5) }))
+    expect(third.store.getState().computing).toBe(false)
+    expect(ids(third.store.getState().list!.tips)).toEqual(tips)
+  })
+
+  it('removes a dismissed watchlist movie without pulling in a replacement', async () => {
+    const ranked = await baseline()
+    const { store, idle } = setup()
+    store.setInputs(inputs({ watchlist: [ranked[2]] }))
+    await idle()
+    expect(store.getState().list!.tips).toHaveLength(21)
+    expect(store.dismiss(ranked[2])).toBeNull()
+    const tips = ids(store.getState().list!.tips)
+    expect(tips).toHaveLength(20)
+    expect(tips).not.toContain(ranked[2])
+  })
+
+  it('takes genres from the movies table when the movie was looked up', async () => {
+    const { store, idle } = setup()
+    store.setInputs(inputs())
+    await idle()
+    expect(store.getState().list!.tips[0].genreIds).toEqual([10, 20])
+  })
+})
+
 describe('tipsKey', () => {
   it('changes with every input and ignores order', () => {
     const base = tipsKey(inputs())
@@ -251,6 +367,7 @@ describe('tipsKey', () => {
     expect(tipsKey(inputs({ dismissed: [3, 2] }))).toBe(tipsKey(inputs({ dismissed: [2, 3] })))
     const changed = [
       inputs({ dismissed: [2] }),
+      inputs({ watchlist: [2] }),
       inputs({ personId: 'p1' }),
       inputs({ showAdult: true }),
       inputs({ hideUnknown: true }),
@@ -268,6 +385,7 @@ describe('withoutIds', () => {
     releaseDate: '',
     posterPath: null,
     overview: '',
+    genreIds: [],
     explanation: { kind: 'sources', titles: [] },
     certification: null,
     runtime: null,

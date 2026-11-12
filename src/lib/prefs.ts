@@ -40,7 +40,7 @@ export function usePrefs(): [Prefs, (patch: Partial<Prefs>) => void] {
 export type ViewMode = 'grid' | 'carousel'
 
 /** Grid or carousel, remembered per page and per device. */
-export function useViewMode(page: 'watched' | 'suggestions'): [ViewMode, (mode: ViewMode) => void] {
+export function useViewMode(page: 'watched' | 'suggestions' | 'watchlist'): [ViewMode, (mode: ViewMode) => void] {
   const key = `filmavond.view.${page}`
   const [mode, setMode] = useState<ViewMode>(() => {
     try {

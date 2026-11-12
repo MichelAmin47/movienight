@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Button, ErrorNote, Spinner } from './components/ui'
 import { t } from './i18n/strings'
 import { AddWatch } from './pages/AddWatch'
 import { BulkAdd } from './pages/BulkAdd'
+import { BackLink } from './components/MovieHeader'
 import { Login } from './pages/Login'
+import { MovieDetail } from './pages/MovieDetail'
 import { Onboarding } from './pages/Onboarding'
 import { Search } from './pages/Search'
 import { Settings } from './pages/Settings'
@@ -13,8 +15,20 @@ import { Stats } from './pages/Stats'
 import { Suggestions } from './pages/Suggestions'
 import { WatchDetail } from './pages/WatchDetail'
 import { Watched } from './pages/Watched'
+import { Watchlist } from './pages/Watchlist'
 import { AuthProvider, useAuth } from './state/auth'
 import { HouseholdProvider, useHousehold } from './state/household'
+
+/** The stats view as a subpage of Instellingen. */
+function SettingsStats() {
+  const navigate = useNavigate()
+  return (
+    <div className="flex flex-col gap-4">
+      <BackLink onClick={() => navigate('/settings')} />
+      <Stats />
+    </div>
+  )
+}
 
 function SignedIn({ userId }: { userId: string }) {
   const { loading, error, household, people, refresh } = useHousehold()
@@ -47,8 +61,11 @@ function SignedIn({ userId }: { userId: string }) {
           <Route path="add/bulk" element={<BulkAdd />} />
           <Route path="add/:tmdbId" element={<AddWatch />} />
           <Route path="suggestions" element={<Suggestions />} />
-          <Route path="stats" element={<Stats />} />
+          <Route path="movie/:tmdbId" element={<MovieDetail />} />
+          <Route path="watchlist" element={<Watchlist />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="settings/stats" element={<SettingsStats />} />
+          <Route path="stats" element={<Navigate to="/settings/stats" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
