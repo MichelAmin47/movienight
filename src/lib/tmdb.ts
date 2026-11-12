@@ -112,11 +112,11 @@ export async function getGenres(): Promise<Record<number, string>> {
   return genres
 }
 
-export async function getRecommendations(tmdbId: number): Promise<TmdbMovieSummary[]> {
-  const key = `rec.${tmdbId}`
+export async function getRecommendations(tmdbId: number, page = 1): Promise<TmdbMovieSummary[]> {
+  const key = page === 1 ? `rec.${tmdbId}` : `rec.${tmdbId}.p${page}`
   const cached = cacheRead<TmdbMovieSummary[]>(key, 7 * DAY)
   if (cached) return cached
-  const data = await tmdb<TmdbList>(`movie/${tmdbId}/recommendations`)
+  const data = await tmdb<TmdbList>(`movie/${tmdbId}/recommendations`, page === 1 ? {} : { page })
   const results = data.results.map(slim)
   cacheWrite(key, results)
   return results
@@ -136,6 +136,31 @@ async function fetchMovie(tmdbId: number): Promise<MovieInsert> {
     overview: details.overview || null,
     cached_at: new Date().toISOString(),
   }
+}
+
+async function discoverPage(genreIds: number[], page: number): Promise<TmdbMovieSummary[]> {
+  const key = `disc.${genreIds.join('-')}.p${page}`
+  const cached = cacheRead<TmdbMovieSummary[]>(key, 7 * DAY)
+  if (cached) return cached
+  const data = await tmdb<TmdbList>('discover/movie', {
+    // Comma-separated means the movie must have all of these genres.
+    with_genres: genreIds.join(','),
+    sort_by: 'vote_average.desc',
+    'vote_count.gte': 200,
+    page,
+  })
+  const results = data.results.map(slim)
+  cacheWrite(key, results)
+  return results
+}
+
+/**
+ * Well-rated movies that have all the given genres. A narrow genre combination
+ * may have fewer pages than asked for; an empty page falls back to page 1.
+ */
+export async function discoverMovies(genreIds: number[], page: number): Promise<TmdbMovieSummary[]> {
+  const results = await discoverPage(genreIds, page)
+  return results.length > 0 || page === 1 ? results : discoverPage(genreIds, 1)
 }
 
 /** A cached movie without a certification is re-checked after this long. */
