@@ -57,12 +57,15 @@ export function Carousel({
   items,
   onOpen,
   spinDisabled = false,
+  onSpinChange,
   children,
 }: {
   items: CarouselItem[]
   onOpen: (index: number) => void
   /** Blocks the spin button, e.g. while the list is still loading. */
   spinDisabled?: boolean
+  /** Told when a spin starts and ends, so the page can leave the list alone meanwhile. */
+  onSpinChange?: (spinning: boolean) => void
   children: (index: number) => ReactNode
 }) {
   const count = items.length
@@ -93,6 +96,7 @@ export function Carousel({
     setConfetti(null)
     if (winnerKey !== null && !keys.includes(winnerKey)) setWinnerKey(null)
   }
+  useEffect(() => onSpinChange?.(spinning), [spinning, onSpinChange])
   // ...and stop any animation that was heading for a place in the old list.
   useEffect(() => () => cancelAnimationFrame(frame.current), [signature])
 

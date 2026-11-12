@@ -2,13 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { certificationAge, isAllowed, nlCertification } from './kijkwijzer'
 import {
   buildPool,
-  displayKey,
   genreAffinity,
   mergeRecommendations,
   rankCandidates,
   ratedMovies,
   seededRandom,
-  selectVisible,
   sourceMovies,
   topGenres,
   weightedOrder,
@@ -295,75 +293,5 @@ describe('weightedOrder', () => {
   it('handles an empty pool and a single candidate', () => {
     expect(weightedOrder([], { rng: seededRandom(1) })).toEqual([])
     expect(weightedOrder([candidate(1, -3)], { rng: seededRandom(1) })).toHaveLength(1)
-  })
-})
-
-describe('selectVisible', () => {
-  const certifications = new Map<number, string | null>([
-    [1, 'AL'],
-    [2, '16'],
-    [3, null],
-    [4, '12'],
-    [5, '18'],
-    [6, '6'],
-  ])
-  const order = [1, 2, 3, 4, 5, 6].map((id) => candidate(id, 1))
-  const select = (showAdult: boolean, hideUnknown: boolean, count = 20) =>
-    selectVisible(order, {
-      certificationOf: (id) => certifications.get(id),
-      isAllowed: (certification) => isAllowed(certification, showAdult),
-      hideUnknown,
-      count,
-    }).visible.map((v) => v.candidate.movie.id)
-
-  it('applies the 16+ toggle and the hide-unknown option, keeping the given order', () => {
-    expect(select(false, false)).toEqual([1, 3, 4, 6])
-    expect(select(false, true)).toEqual([1, 4, 6])
-    expect(select(true, false)).toEqual([1, 2, 3, 4, 5, 6])
-    expect(select(true, true)).toEqual([1, 2, 4, 5, 6])
-  })
-
-  it('stops at the requested count', () => {
-    expect(select(true, false, 3)).toEqual([1, 2, 3])
-  })
-
-  it('never lets a filtered shuffle through: sampled order plus filters has no 16+ and no duplicates', () => {
-    const shuffled = weightedOrder(order, { rng: seededRandom(5) })
-    const { visible } = selectVisible(shuffled, {
-      certificationOf: (id) => certifications.get(id),
-      isAllowed: (certification) => isAllowed(certification, false),
-      hideUnknown: true,
-    })
-    const ids = visible.map((v) => v.candidate.movie.id)
-    expect([...ids].sort()).toEqual([1, 4, 6])
-    expect(new Set(ids).size).toBe(ids.length)
-  })
-
-  it('stops at a movie without loaded details and asks for the next batch', () => {
-    const loaded = new Map<number, string | null>([[1, 'AL']])
-    const result = selectVisible(order, {
-      certificationOf: (id) => loaded.get(id),
-      isAllowed: (certification) => isAllowed(certification, false),
-      hideUnknown: false,
-      batch: 3,
-    })
-    expect(result.visible.map((v) => v.candidate.movie.id)).toEqual([1])
-    expect(result.pending).toEqual([2, 3, 4])
-    const exhausted = selectVisible(order, {
-      certificationOf: (id) => loaded.get(id),
-      isAllowed: () => true,
-      hideUnknown: false,
-      canLookup: false,
-    })
-    expect(exhausted.pending).toEqual([])
-  })
-})
-
-describe('displayKey', () => {
-  it('is stable per movie and seed, and reorders movies between seeds', () => {
-    expect(displayKey(10, 1)).toBe(displayKey(10, 1))
-    const sorted = (seed: number) => [1, 2, 3, 4, 5, 6, 7, 8].sort((a, b) => displayKey(a, seed) - displayKey(b, seed))
-    expect(sorted(1)).not.toEqual(sorted(2))
-    expect(sorted(1)).not.toEqual([1, 2, 3, 4, 5, 6, 7, 8])
   })
 })

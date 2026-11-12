@@ -185,7 +185,8 @@ export const nl = {
     title: 'Tips',
     intro: 'Films die jullie vast leuk vinden, op basis van jullie sterren.',
     basedOn: 'Tips op basis van',
-    loading: 'Tips aan het zoeken…',
+    loading: 'Tips worden geladen…',
+    newAvailable: 'Nieuwe tips beschikbaar',
     empty:
       'Nog geen tips. Geef een paar films minstens 4 sterren, dan zoeken we iets dat erbij past.',
     emptyFiltered: 'Geen tips die bij dit filter passen. Pas het filter hierboven aan.',

@@ -81,6 +81,8 @@ The unsaved *Snel toevoegen* selection (movies plus scores) is also kept per
 device, in `localStorage` under `filmavond.bulkDraft` (`src/pages/BulkAdd.tsx`).
 The grid/carousel choice on Gezien and Tips is remembered per page under
 `filmavond.view.<page>` (`useViewMode` in `src/lib/prefs.ts`).
+The finished Tips lists are cached per device in `localStorage` under
+`filmavond.tips`, keyed by a hash of their inputs (`src/lib/tipsStore.ts`).
 
 ### Code layout
 
@@ -90,6 +92,8 @@ src/lib/                supabase client, database types, tmdb client + cache,
                         suggestions.ts (pure scoring/sampling), kijkwijzer.ts
                         bulkSelection.ts (pure helpers for the bulk add selection)
                         carousel.ts (pure ring window / random pick / spin target maths)
+                        tipsStore.ts (the Tips list: computes it completely before
+                        publishing, caches it, handles dismiss/shuffle; no React, I/O injected)
 src/state/              auth and household data contexts
 src/components/         shared UI; `Toast` in ui.tsx for short confirmations;
                         `Carousel` (3D poster ring, styles in index.css) and
@@ -99,8 +103,11 @@ supabase/functions/tmdb single-file Deno proxy (no local imports)
 supabase/migrations/    reference only
 ```
 
-Suggestion logic lives in `src/lib/suggestions.ts` and is pure and unit
-tested; keep I/O in `src/pages/Suggestions.tsx` and `src/lib/tmdb.ts`.
+Suggestion scoring lives in `src/lib/suggestions.ts` and is pure and unit
+tested. `src/lib/tipsStore.ts` turns it into the list on screen and gets its
+I/O (`src/lib/tmdb.ts`, storage) injected by `src/pages/Suggestions.tsx`, so it
+is unit tested too. The Tips page must never render a partial list: a list is
+only published once it is complete and filtered.
 TMDB responses are cached in the `movies` table and in `localStorage`; keep
 the number of TMDB calls low.
 
