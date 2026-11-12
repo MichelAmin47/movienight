@@ -16,10 +16,13 @@ export function StarsInput({
   value,
   onChange,
   label,
+  compact = false,
 }: {
   value: number | null
   onChange: (value: number | null) => void
   label: (score: number) => string
+  /** Slightly smaller targets (44px) for dense lists. */
+  compact?: boolean
 }) {
   return (
     <div className="flex" role="group">
@@ -30,7 +33,7 @@ export function StarsInput({
           aria-label={label(score)}
           aria-pressed={value === score}
           onClick={() => onChange(value === score ? null : score)}
-          className={`flex size-12 items-center justify-center text-4xl leading-none transition-transform active:scale-125 ${
+          className={`flex items-center justify-center leading-none ${compact ? 'size-11 text-3xl' : 'size-12 text-4xl'} transition-transform active:scale-125 ${
             value !== null && score <= value ? 'text-star' : 'text-line'
           }`}
         >

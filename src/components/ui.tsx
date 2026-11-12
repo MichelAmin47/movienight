@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from 'react'
 import { t } from '../i18n/strings'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -22,7 +22,7 @@ export function Button({ variant = 'primary', className = '', type = 'button', .
   )
 }
 
-export function TextInput({ className = '', ...rest }: InputHTMLAttributes<HTMLInputElement>) {
+export function TextInput({ className = '', ...rest }: ComponentProps<'input'>) {
   return (
     <input
       className={`min-h-12 w-full rounded-2xl border border-line bg-surface px-4 text-base text-ink placeholder:text-muted ${className}`}
@@ -63,17 +63,26 @@ export function Chip({
   selected,
   onClick,
   children,
+  title,
+  ariaLabel,
+  className = 'px-4',
 }: {
   selected: boolean
   onClick: () => void
   children: ReactNode
+  title?: string
+  ariaLabel?: string
+  /** Horizontal padding; override for chips that start with a badge. */
+  className?: string
 }) {
   return (
     <button
       type="button"
       aria-pressed={selected}
+      aria-label={ariaLabel}
+      title={title}
       onClick={onClick}
-      className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition-colors ${
+      className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border ${className} text-sm font-bold transition-colors ${
         selected ? 'border-accent bg-accent text-on-accent' : 'border-line bg-surface text-ink hover:bg-raised'
       }`}
     >

@@ -1,3 +1,5 @@
+import { t } from '../i18n/strings'
+
 /** Today's date in the user's timezone as YYYY-MM-DD (the format of `watches.watched_on`). */
 export function todayIso(): string {
   const now = new Date()
@@ -7,8 +9,12 @@ export function todayIso(): string {
 
 const dateFormat = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
 
-/** Formats a YYYY-MM-DD date as e.g. "12 november 2026" without timezone shifts. */
-export function formatDate(iso: string): string {
+/**
+ * Formats a YYYY-MM-DD date as e.g. "12 november 2026" without timezone shifts.
+ * A null date (watched at an unknown earlier time) becomes "Eerder gekeken".
+ */
+export function formatDate(iso: string | null): string {
+  if (!iso) return t.detail.earlier
   const [year, month, day] = iso.split('-').map(Number)
   return dateFormat.format(new Date(year, month - 1, day))
 }

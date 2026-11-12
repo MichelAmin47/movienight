@@ -1,7 +1,10 @@
-/** Dutch (Kijkwijzer / NICAM) age ratings as TMDB reports them for region NL. */
-export const MAX_AGE_OPTIONS = ['AL', '6', '9', '12'] as const
-export type MaxAge = (typeof MAX_AGE_OPTIONS)[number]
-export const DEFAULT_MAX_AGE: MaxAge = '9'
+/**
+ * Dutch (Kijkwijzer / NICAM) age ratings as TMDB reports them for region NL:
+ * AL, 6, 9, 12, 14, 16, 18.
+ */
+
+/** Movies rated this age or higher are hidden unless "show 16+" is on. */
+export const ADULT_AGE = 16
 
 /** Minimum age for a certification, or null when it is missing or unrecognised. */
 export function certificationAge(certification: string | null | undefined): number | null {
@@ -12,11 +15,14 @@ export function certificationAge(certification: string | null | undefined): numb
   return Number.isFinite(age) ? age : null
 }
 
-/** Null certification means "unknown"; the caller decides whether to show those. */
-export function isAllowed(certification: string | null | undefined, maxAge: MaxAge): boolean | null {
+/**
+ * Whether a movie may be suggested. Returns null when the certification is
+ * unknown; the caller decides whether to show those.
+ */
+export function isAllowed(certification: string | null | undefined, showAdult: boolean): boolean | null {
   const age = certificationAge(certification)
   if (age === null) return null
-  return age <= (certificationAge(maxAge) ?? 0)
+  return showAdult || age < ADULT_AGE
 }
 
 /** Shape of TMDB's `release_dates` (sub)response. */

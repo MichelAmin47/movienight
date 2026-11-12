@@ -1,44 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Poster } from '../components/Poster'
 import { ErrorNote, PageTitle, Spinner, TextInput } from '../components/ui'
 import { t } from '../i18n/strings'
-import { releaseYear, searchMovies, type TmdbMovieSummary } from '../lib/tmdb'
+import { releaseYear } from '../lib/tmdb'
+import { MIN_QUERY_LENGTH, useMovieSearch } from '../lib/useMovieSearch'
 import { useHousehold } from '../state/household'
-
-const DEBOUNCE_MS = 350
 
 export function Search() {
   const { watches } = useHousehold()
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get('q') ?? ''
-  const [results, setResults] = useState<{ query: string; movies: TmdbMovieSummary[] } | null>(null)
-  const [error, setError] = useState(false)
-
+  const { movies: current, error } = useMovieSearch(query)
   const watchedIds = useMemo(() => new Set(watches.map((w) => w.tmdb_id)), [watches])
   const trimmed = query.trim()
-
-  useEffect(() => {
-    if (trimmed.length < 2) return
-    let cancelled = false
-    const timer = setTimeout(() => {
-      searchMovies(trimmed)
-        .then((movies) => {
-          if (cancelled) return
-          setResults({ query: trimmed, movies })
-          setError(false)
-        })
-        .catch(() => {
-          if (!cancelled) setError(true)
-        })
-    }, DEBOUNCE_MS)
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [trimmed])
-
-  const current = trimmed.length >= 2 && results?.query === trimmed ? results.movies : null
 
   return (
     <div className="flex flex-col gap-4">
@@ -54,8 +29,25 @@ export function Search() {
       />
 
       {error && <ErrorNote>{t.common.genericError}</ErrorNote>}
-      {trimmed.length < 2 ? (
-        <p className="text-muted">{t.search.hint}</p>
+      {trimmed.length < MIN_QUERY_LENGTH ? (
+        <>
+          <p className="text-muted">{t.search.hint}</p>
+          <Link
+            to="/add/bulk"
+            className="flex min-h-16 items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-2 hover:bg-raised"
+          >
+            <span className="text-2xl" aria-hidden>
+              ⚡
+            </span>
+            <span className="flex-1">
+              <span className="block font-bold">{t.search.bulkLink}</span>
+              <span className="block text-sm text-muted">{t.search.bulkLinkHint}</span>
+            </span>
+            <span aria-hidden className="text-xl text-muted">
+              ›
+            </span>
+          </Link>
+        </>
       ) : current === null ? (
         !error && <Spinner />
       ) : current.length === 0 ? (

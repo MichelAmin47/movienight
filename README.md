@@ -20,8 +20,8 @@ Browser (Vite + React, GitHub Pages)
   work on GitHub Pages without 404 tricks.
 - **Database and auth** – Supabase. Row Level Security restricts every table to
   members of the household, so the publishable key in `.env.production` is safe
-  to commit. The schema lives in `supabase/migrations/0001_init_schema.sql`
-  **for reference only**: it is already applied to the hosted project.
+  to commit. The schema lives in `supabase/migrations/` **for reference
+  only**: every file there is already applied to the hosted project.
 - **Movie data** – TMDB. The browser never talks to TMDB directly; it calls the
   `tmdb` Edge Function, which checks the user's session and forwards an
   allowlist of endpoints with the `TMDB_TOKEN` secret.
@@ -31,7 +31,10 @@ Browser (Vite + React, GitHub Pages)
 One household shares one watched list. Parents have accounts
 (`household_members`); everyone who gives stars, including children without an
 account, is a row in `people`. Watching a movie again adds another `watches`
-row. `movies` is a shared cache of TMDB data, `dismissed` holds suggestions the
+row. A watch without a date (`watched_on` is null) means "watched at some
+earlier time"; it is shown as *Eerder gekeken*, sorts after all dated watches,
+and counts fully for suggestions and stats. *Snel toevoegen* (`/add/bulk`) adds
+many such watches at once to backfill the family's history. `movies` is a shared cache of TMDB data, `dismissed` holds suggestions the
 family is not interested in.
 
 A second parent with their own email address logs in, copies the code shown on
@@ -50,8 +53,10 @@ Implemented in `src/lib/suggestions.ts` (pure, unit tested):
    mean of (score − 3) over watched movies in that genre, so liked genres add a
    little and disliked genres subtract a little.
 4. Watched and dismissed movies are excluded.
-5. The Kijkwijzer filter uses the Dutch certification from TMDB release dates.
-   Movies without one are labelled "Leeftijd onbekend" and can be hidden.
+5. The age filter uses the Dutch (Kijkwijzer) certification from TMDB release
+   dates. Movies rated 16 or 18 are hidden unless *16+ films tonen* is on.
+   Movies without a certification are labelled "Leeftijd onbekend" and can be
+   hidden.
 6. The top 20 are shown.
 
 The age filter settings are stored per device in `localStorage`.

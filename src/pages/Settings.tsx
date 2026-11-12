@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { CopyCode } from '../components/CopyCode'
 import { PeopleEditor } from '../components/PeopleEditor'
-import { Button, Card, Chip, ErrorNote, PageTitle, TextInput } from '../components/ui'
+import { Button, Card, ErrorNote, PageTitle, TextInput } from '../components/ui'
 import { t } from '../i18n/strings'
-import { MAX_AGE_OPTIONS } from '../lib/kijkwijzer'
 import { usePrefs } from '../lib/prefs'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../state/auth'
@@ -66,16 +65,15 @@ export function Settings() {
 
       <Card className="flex flex-col gap-4">
         <h2 className="text-lg font-extrabold">{t.settings.suggestions}</h2>
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-bold">{t.settings.maxAge}</span>
-          <div className="flex flex-wrap gap-2">
-            {MAX_AGE_OPTIONS.map((age) => (
-              <Chip key={age} selected={prefs.maxAge === age} onClick={() => setPrefs({ maxAge: age })}>
-                {age}
-              </Chip>
-            ))}
-          </div>
-        </div>
+        <label className="flex min-h-11 items-center gap-3">
+          <input
+            type="checkbox"
+            className="size-6 accent-(--accent)"
+            checked={prefs.showAdult}
+            onChange={(e) => setPrefs({ showAdult: e.target.checked })}
+          />
+          <span>{t.settings.showAdult}</span>
+        </label>
         <label className="flex min-h-11 items-center gap-3">
           <input
             type="checkbox"

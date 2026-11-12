@@ -1,5 +1,5 @@
 /**
- * Hand-written from supabase/migrations/0001_init_schema.sql, in the shape
+ * Hand-written from the SQL files in supabase/migrations, in the shape
  * `supabase gen types` would produce. Keep in sync with the schema manually.
  */
 export type Database = {
@@ -104,7 +104,8 @@ export type Database = {
           id: string
           household_id: string
           tmdb_id: number
-          watched_on: string
+          /** Null means "watched at some unknown earlier date". */
+          watched_on: string | null
           note: string | null
           created_at: string
         }
@@ -112,7 +113,7 @@ export type Database = {
           id?: string
           household_id: string
           tmdb_id: number
-          watched_on?: string
+          watched_on?: string | null
           note?: string | null
           created_at?: string
         }
@@ -120,7 +121,7 @@ export type Database = {
           id?: string
           household_id?: string
           tmdb_id?: number
-          watched_on?: string
+          watched_on?: string | null
           note?: string | null
           created_at?: string
         }

@@ -110,13 +110,20 @@ describe('kijkwijzer', () => {
     expect(certificationAge(null)).toBeNull()
   })
 
-  it('compares against the maximum age and reports unknown as null', () => {
-    expect(isAllowed('6', '9')).toBe(true)
-    expect(isAllowed('9', '9')).toBe(true)
-    expect(isAllowed('12', '9')).toBe(false)
-    expect(isAllowed('AL', 'AL')).toBe(true)
-    expect(isAllowed('6', 'AL')).toBe(false)
-    expect(isAllowed(null, '9')).toBeNull()
+  it('hides 16 and 18 unless 16+ movies are enabled', () => {
+    for (const certification of ['AL', '6', '9', '12', '14']) {
+      expect(isAllowed(certification, false)).toBe(true)
+      expect(isAllowed(certification, true)).toBe(true)
+    }
+    for (const certification of ['16', '18']) {
+      expect(isAllowed(certification, false)).toBe(false)
+      expect(isAllowed(certification, true)).toBe(true)
+    }
+  })
+
+  it('reports an unknown certification as null regardless of the toggle', () => {
+    expect(isAllowed(null, false)).toBeNull()
+    expect(isAllowed('', true)).toBeNull()
   })
 
   it('picks the Dutch certification, preferring the theatrical release', () => {

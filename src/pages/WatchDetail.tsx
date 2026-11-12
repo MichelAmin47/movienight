@@ -56,7 +56,7 @@ export function WatchDetail() {
     <div className="flex flex-col gap-4">
       <BackLink onClick={() => navigate('/')} />
       <MovieHeader movie={movie}>
-        <p className="text-sm text-muted">{t.detail.watchedOn(formatDate(watch.watched_on))}</p>
+        <p className="text-sm text-muted">{watch.watched_on ? t.detail.watchedOn(formatDate(watch.watched_on)) : t.detail.earlier}</p>
         {avg !== null && (
           <p className="flex items-center gap-2 text-lg font-extrabold">
             <StarsDisplay value={avg} className="text-xl" />

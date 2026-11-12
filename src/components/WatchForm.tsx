@@ -7,7 +7,8 @@ import { StarsInput } from './Stars'
 import { Button, ErrorNote, TextInput } from './ui'
 
 export type WatchFormValues = {
-  watchedOn: string
+  /** YYYY-MM-DD, or null for "watched at some unknown earlier date". */
+  watchedOn: string | null
   note: string
   /** person id → score; people who skipped are absent. */
   scores: Record<string, number>
@@ -27,6 +28,8 @@ export function WatchForm({
   const [values, setValues] = useState<WatchFormValues>(
     initial ?? { watchedOn: todayIso(), note: '', scores: {} },
   )
+  // Remembers the picked date while the "date unknown" toggle is on.
+  const [lastDate, setLastDate] = useState(values.watchedOn ?? todayIso())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
 
@@ -51,16 +54,32 @@ export function WatchForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1.5">
-        <span className="font-bold">{t.watchForm.date}</span>
-        <TextInput
-          type="date"
-          required
-          max={todayIso()}
-          value={values.watchedOn}
-          onChange={(e) => setValues({ ...values, watchedOn: e.target.value })}
-        />
-      </label>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex flex-col gap-1.5">
+          <span className="font-bold">{t.watchForm.date}</span>
+          <TextInput
+            type="date"
+            required
+            disabled={values.watchedOn === null}
+            max={todayIso()}
+            value={values.watchedOn ?? ''}
+            onChange={(e) => {
+              setValues({ ...values, watchedOn: e.target.value })
+              if (e.target.value) setLastDate(e.target.value)
+            }}
+            className="disabled:opacity-40"
+          />
+        </label>
+        <label className="flex min-h-11 items-center gap-3">
+          <input
+            type="checkbox"
+            className="size-6 accent-(--accent)"
+            checked={values.watchedOn === null}
+            onChange={(e) => setValues({ ...values, watchedOn: e.target.checked ? null : lastDate })}
+          />
+          <span>{t.watchForm.dateUnknown}</span>
+        </label>
+      </div>
 
       <fieldset className="flex flex-col gap-2">
         <legend className="font-bold">{t.watchForm.scores}</legend>
@@ -104,7 +123,7 @@ export function WatchForm({
       {error && <ErrorNote>{t.common.genericError}</ErrorNote>}
 
       <div className="flex gap-2">
-        <Button type="submit" className="flex-1" disabled={busy || !values.watchedOn}>
+        <Button type="submit" className="flex-1" disabled={busy || values.watchedOn === ''}>
           {busy ? t.common.saving : t.common.save}
         </Button>
         {onCancel && (

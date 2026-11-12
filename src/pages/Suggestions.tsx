@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PersonBadge } from '../components/PersonBadge'
+import { PersonFilter } from '../components/PersonFilter'
 import { Poster } from '../components/Poster'
-import { Button, Chip, ErrorNote, PageTitle, Spinner } from '../components/ui'
+import { Button, ErrorNote, PageTitle, Spinner } from '../components/ui'
 import { t } from '../i18n/strings'
 import type { Movie } from '../lib/database.types'
-import { isAllowed, MAX_AGE_OPTIONS } from '../lib/kijkwijzer'
+import { isAllowed } from '../lib/kijkwijzer'
 import { usePrefs } from '../lib/prefs'
 import { MAX_SUGGESTIONS, rankCandidates, ratedMovies, sourceMovies, type Candidate } from '../lib/suggestions'
 import { supabase } from '../lib/supabase'
@@ -85,12 +85,12 @@ export function Suggestions() {
         break
       }
       const certification = details.get(candidate.movie.id)?.certification_nl ?? null
-      const allowed = isAllowed(certification, prefs.maxAge)
+      const allowed = isAllowed(certification, prefs.showAdult)
       if (allowed === false || (allowed === null && prefs.hideUnknown)) continue
       visible.push({ candidate, certification })
     }
     return { visible, pending }
-  }, [ranked, details, prefs.maxAge, prefs.hideUnknown])
+  }, [ranked, details, prefs.showAdult, prefs.hideUnknown])
 
   const pendingKey = pending.join(',')
   useEffect(() => {
@@ -154,37 +154,18 @@ export function Suggestions() {
         <p className="mt-1 text-muted">{t.suggestions.intro}</p>
       </div>
 
-      {people.length > 1 && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={t.suggestions.basedOn}>
-          <Chip selected={personId === null} onClick={() => setPersonId(null)}>
-            {t.common.everyone}
-          </Chip>
-          {people.map((p) => (
-            <Chip key={p.id} selected={personId === p.id} onClick={() => setPersonId(p.id)}>
-              <PersonBadge person={p} size="sm" />
-              {p.name}
-            </Chip>
-          ))}
-        </div>
-      )}
+      <PersonFilter people={people} value={personId} onChange={setPersonId} label={t.suggestions.basedOn} />
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl bg-raised px-3 py-2">
-        <div className="flex items-center gap-1.5" role="group" aria-label={t.settings.maxAge}>
-          <span className="mr-1 text-sm font-bold text-muted">{t.suggestions.maxAgeShort}</span>
-          {MAX_AGE_OPTIONS.map((age) => (
-            <button
-              key={age}
-              type="button"
-              aria-pressed={prefs.maxAge === age}
-              onClick={() => setPrefs({ maxAge: age })}
-              className={`min-h-11 min-w-11 rounded-full px-2 text-sm font-bold ${
-                prefs.maxAge === age ? 'bg-accent text-on-accent' : 'bg-surface text-ink'
-              }`}
-            >
-              {age}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-2xl bg-raised px-3 py-1">
+        <label className="flex min-h-11 items-center gap-2 text-sm font-bold">
+          <input
+            type="checkbox"
+            className="size-5 accent-(--accent)"
+            checked={prefs.showAdult}
+            onChange={(e) => setPrefs({ showAdult: e.target.checked })}
+          />
+          {t.settings.showAdult}
+        </label>
         <label className="flex min-h-11 items-center gap-2 text-sm font-bold">
           <input
             type="checkbox"
