@@ -1,0 +1,7 @@
+# Only used when deploying with the Supabase CLI.
+project_id = "gmxhporxvtgiagboaccf"
+
+# The function verifies the caller's JWT itself (see index.ts), so the
+# gateway-level check is disabled. That also lets CORS preflights through.
+[functions.tmdb]
+verify_jwt = false
