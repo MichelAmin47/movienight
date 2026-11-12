@@ -15,7 +15,7 @@ export const nl = {
     add: 'Toevoegen',
     back: 'Terug',
     retry: 'Opnieuw proberen',
-    everyone: 'Iedereen',
+    everyone: 'Alle',
     genericError: 'Er ging iets mis. Probeer het opnieuw.',
     minutes: (n: number) => `${n} min`,
   },
