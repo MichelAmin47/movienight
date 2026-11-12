@@ -23,7 +23,7 @@ export function PersonFilter({
 }) {
   if (people.length < 2) return null
   return (
-    <div className="flex gap-1.5" role="group" aria-label={label}>
+    <div className="flex gap-1" role="group" aria-label={label}>
       <Chip selected={value === null} onClick={() => onChange(null)} className="px-3">
         {t.common.everyone}
       </Chip>
@@ -34,7 +34,7 @@ export function PersonFilter({
           onClick={() => onChange(person.id)}
           title={person.name}
           ariaLabel={person.name}
-          className="min-w-0 max-w-16 flex-1 basis-0 justify-center p-0.5"
+          className="min-w-0 max-w-16 flex-1 basis-0 justify-center p-px"
         >
           <PersonAvatar person={person} size="fill" />
         </Chip>
