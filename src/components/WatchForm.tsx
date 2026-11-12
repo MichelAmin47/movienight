@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { t } from '../i18n/strings'
 import { todayIso } from '../lib/format'
 import { useHousehold } from '../state/household'
-import { PersonBadge } from './PersonBadge'
+import { PersonAvatar } from './PersonAvatar'
 import { StarsInput } from './Stars'
 import { Button, ErrorNote, TextInput } from './ui'
 
@@ -95,7 +95,7 @@ export function WatchForm({
                   className="flex flex-wrap items-center justify-between gap-x-3 rounded-2xl bg-raised py-1 pr-1 pl-3"
                 >
                   <span className="flex min-w-0 items-center gap-2 py-1">
-                    <PersonBadge person={person} />
+                    <PersonAvatar person={person} />
                     <span className="truncate font-bold">{person.name}</span>
                   </span>
                   <StarsInput

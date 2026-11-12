@@ -1,12 +1,13 @@
 import { t } from '../i18n/strings'
 import type { Person } from '../lib/database.types'
-import { PersonBadge } from './PersonBadge'
+import { PersonAvatar } from './PersonAvatar'
 import { Chip } from './ui'
 
 /**
  * "Everyone" plus one compact chip per family member. To fit a whole family
- * on a phone, each chip shows the badge and the first letter only; the full
- * name is in the tooltip and the accessible label.
+ * on a phone, each chip shows only the avatar (picture, emoji or, without
+ * either, the first letter); the full name is in the tooltip and the
+ * accessible label.
  */
 export function PersonFilter({
   people,
@@ -32,10 +33,9 @@ export function PersonFilter({
           onClick={() => onChange(person.id)}
           title={person.name}
           ariaLabel={person.name}
-          className="pr-2.5 pl-1"
+          className="px-2"
         >
-          <PersonBadge person={person} size="sm" />
-          <span aria-hidden>{person.name.trim().slice(0, 1).toUpperCase()}</span>
+          <PersonAvatar person={person} size="sm" />
         </Chip>
       ))}
     </div>

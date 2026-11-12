@@ -60,11 +60,17 @@ One household, one shared watched list.
 | Table | Purpose |
 | --- | --- |
 | `households`, `household_members` | The family and the accounts (parents) linked to it |
-| `people` | Everyone who gives stars, including children without an account |
+| `people` | Everyone who gives stars, including children without an account. `avatar_path` (nullable) points into the private storage bucket `avatars`; null means emoji |
 | `movies` | Shared TMDB cache, keyed by `tmdb_id`; upsert the movie before inserting a watch |
 | `watches` | One row per viewing. `watched_on` is nullable: null means "Eerder gekeken" and must be sent as an explicit `null` (omitting it defaults to today) |
 | `ratings` | `(watch_id, person_id)` → score 1–5 |
 | `dismissed` | Suggestions the household is not interested in |
+
+Storage: private bucket `avatars` (max 2 MB, webp/jpeg/png), objects at
+`<household_id>/<person_id>-<timestamp>.webp`, readable and writable by
+household members only. Images are shown through signed URLs
+(`src/lib/avatars.ts`, batch-signed and cached for about an hour), never
+public URLs. Always render a person with `<PersonAvatar>`.
 
 RPCs: `create_household(household_name)`, `ping()`.
 `src/lib/database.types.ts` is written by hand (no `supabase gen types`).

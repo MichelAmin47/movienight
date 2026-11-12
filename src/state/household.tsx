@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Household, Movie, Person, Rating, Watch } from '../lib/database.types'
+import { avatarUrlCache } from '../lib/avatars'
 import { supabase } from '../lib/supabase'
 
 /** A watch joined with its movie and the ratings given that evening. */
@@ -19,6 +20,8 @@ type HouseholdData = {
   people: Person[]
   watches: WatchEntry[]
   dismissed: number[]
+  /** Signed URLs of the people's own pictures, keyed by `avatar_path`. */
+  avatarUrls: Record<string, string>
 }
 
 type HouseholdState = HouseholdData & {
@@ -28,7 +31,7 @@ type HouseholdState = HouseholdData & {
   refresh: () => Promise<void>
 }
 
-const empty: HouseholdData = { household: null, memberCount: 0, people: [], watches: [], dismissed: [] }
+const empty: HouseholdData = { household: null, memberCount: 0, people: [], watches: [], dismissed: [], avatarUrls: {} }
 
 const HouseholdContext = createContext<HouseholdState>({
   ...empty,
@@ -36,6 +39,21 @@ const HouseholdContext = createContext<HouseholdState>({
   error: null,
   refresh: async () => {},
 })
+
+function avatarPaths(people: Person[]): string[] {
+  return people.flatMap((person) => (person.avatar_path ? [person.avatar_path] : []))
+}
+
+/** A failure only costs the pictures (emoji fallback), never the whole page. */
+async function loadAvatarUrls(people: Person[]): Promise<Record<string, string>> {
+  const paths = avatarPaths(people)
+  if (paths.length === 0) return {}
+  try {
+    return await avatarUrlCache.get(paths)
+  } catch {
+    return {}
+  }
+}
 
 async function loadHousehold(userId: string): Promise<HouseholdData> {
   const membership = await supabase
@@ -70,6 +88,7 @@ async function loadHousehold(userId: string): Promise<HouseholdData> {
     people: people.data ?? [],
     watches: (watches.data ?? []) as WatchEntry[],
     dismissed: (dismissed.data ?? []).map((d) => d.tmdb_id),
+    avatarUrls: await loadAvatarUrls(people.data ?? []),
   }
 }
 
@@ -92,6 +111,27 @@ export function HouseholdProvider({ userId, children }: { userId: string; childr
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  // Signed URLs expire after about an hour: re-sign them in time, also when
+  // the app comes back from the background (timers do not run there).
+  const { people } = data
+  useEffect(() => {
+    const paths = avatarPaths(people)
+    if (paths.length === 0) return
+    let cancelled = false
+    const check = async () => {
+      if (document.visibilityState !== 'visible' || !avatarUrlCache.isStale(paths)) return
+      const avatarUrls = await loadAvatarUrls(people)
+      if (!cancelled) setData((current) => (current.people === people ? { ...current, avatarUrls } : current))
+    }
+    const timer = window.setInterval(() => void check(), 60_000)
+    document.addEventListener('visibilitychange', check)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', check)
+    }
+  }, [people])
 
   const value = useMemo(() => ({ ...data, loading, error, refresh }), [data, loading, error, refresh])
   return <HouseholdContext.Provider value={value}>{children}</HouseholdContext.Provider>
