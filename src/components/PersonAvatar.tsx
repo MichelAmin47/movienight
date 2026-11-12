@@ -7,7 +7,7 @@ export const PERSON_COLORS = ['#e2574c', '#f2a93b', '#3fa796', '#4c8fe2', '#8b6f
 
 type AvatarPerson = Pick<Person, 'name' | 'emoji' | 'color'> & { avatar_path?: string | null }
 
-const sizes = { sm: 'size-7 text-base', md: 'size-10 text-xl', chip: 'size-10 text-xl', lg: 'size-14 text-3xl', xl: 'size-20 text-4xl' }
+const sizes = { sm: 'size-7 text-base', md: 'size-10 text-xl', fill: 'aspect-square w-full text-2xl', lg: 'size-14 text-3xl', xl: 'size-20 text-4xl' }
 
 /**
  * The one way a person is shown: their own picture if they have one, else
