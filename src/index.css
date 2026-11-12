@@ -71,9 +71,101 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Carousel view: a ring of posters in 3D. Sizes follow the poster width, which
+ * is limited by both the screen width (phone in portrait) and its height
+ * (tablet in landscape).
+ */
+.carousel-stage {
+  --carousel-poster: min(44vw, 26vh, 220px);
+  --carousel-radius: calc(var(--carousel-poster) * 2.1);
+  height: calc(var(--carousel-poster) * 1.5 * 1.1 + 48px);
+}
+
+.carousel-perspective {
+  position: absolute;
+  inset: 0;
+  perspective: calc(var(--carousel-poster) * 5);
+}
+
+.carousel-ring {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--carousel-radius) * -1));
+}
+
+.carousel-slot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--carousel-poster);
+  margin: calc(var(--carousel-poster) * -0.75) 0 0 calc(var(--carousel-poster) * -0.5);
+  padding: 0;
+  border-radius: 1rem;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.carousel-winner {
+  box-shadow: 0 0 0 3px var(--star);
+}
+
+/* Soft light behind the winning poster; flat, so it is not clipped by the 3D layers. */
+.carousel-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--carousel-poster) * 1.9);
+  height: calc(var(--carousel-poster) * 2.1);
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--star) 75%, transparent), transparent);
+  animation: carousel-fade 400ms ease-out;
+}
+
+.carousel-confetti {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  border-radius: 3px;
+  opacity: 0;
+  animation: carousel-confetti 1100ms cubic-bezier(0.15, 0.6, 0.3, 1) forwards;
+}
+
+.carousel-fade {
+  animation: carousel-fade 280ms ease-out;
+}
+
+@keyframes carousel-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), calc(var(--dy) + 60px)) rotate(var(--rotate));
+  }
+}
+
+@keyframes carousel-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* The one exception: a short fade that shows the spin result without any movement. */
+@media (prefers-reduced-motion: reduce) {
+  .carousel-fade {
+    animation: carousel-fade 280ms ease-out !important;
   }
 }

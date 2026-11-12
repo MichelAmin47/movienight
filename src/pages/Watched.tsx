@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Carousel, type CarouselItem } from '../components/Carousel'
 import { PersonFilter } from '../components/PersonFilter'
 import { Poster } from '../components/Poster'
+import { StarsDisplay } from '../components/Stars'
 import { Chip, PageTitle } from '../components/ui'
+import { ViewSwitcher } from '../components/ViewSwitcher'
 import { t } from '../i18n/strings'
-import { average, formatScore } from '../lib/format'
+import { average, formatDate, formatScore } from '../lib/format'
+import { useViewMode } from '../lib/prefs'
 import { useHousehold, type WatchEntry } from '../state/household'
 
 type Sort = 'date' | 'score'
@@ -15,8 +19,45 @@ function scoreOf(watch: WatchEntry, personId: string | null): number | null {
   return average(watch.ratings.map((r) => r.score))
 }
 
+const cardAction = 'inline-flex min-h-11 items-center rounded-2xl px-4 text-sm font-bold'
+
+/** Card under the carousel for the centred watch. */
+function WatchCard({ watch, score }: { watch: WatchEntry; score: number | null }) {
+  const { movie } = watch
+  return (
+    <>
+      <h2 className="text-xl leading-tight font-extrabold text-balance">{movie.title}</h2>
+      <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
+        {movie.year}
+        <span className={`rounded-full bg-raised px-2 py-0.5 text-xs font-bold ${movie.certification_nl ? 'text-good' : ''}`}>
+          {movie.certification_nl ? t.suggestions.ageLabel(movie.certification_nl) : t.suggestions.unknownAge}
+        </span>
+        <span>{formatDate(watch.watched_on)}</span>
+      </p>
+      {score === null ? (
+        <p className="text-sm text-muted">{t.detail.noScores}</p>
+      ) : (
+        <p className="flex items-center gap-2 text-lg font-extrabold">
+          <StarsDisplay value={score} className="text-xl" />
+          {formatScore(score)}
+        </p>
+      )}
+      <div className="mt-1 flex flex-wrap gap-2">
+        <Link to={`/watch/${watch.id}`} className={`${cardAction} bg-accent text-on-accent`}>
+          {t.carousel.details}
+        </Link>
+        <Link to={`/add/${watch.tmdb_id}`} className={`${cardAction} bg-raised text-ink`}>
+          {t.detail.watchAgain}
+        </Link>
+      </div>
+    </>
+  )
+}
+
 export function Watched() {
   const { watches, people } = useHousehold()
+  const navigate = useNavigate()
+  const [view, setView] = useViewMode('watched')
   const [sort, setSort] = useState<Sort>('date')
   const [personId, setPersonId] = useState<string | null>(null)
 
@@ -28,6 +69,10 @@ export function Watched() {
     if (sort === 'score') rows.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     return rows
   }, [watches, sort, personId])
+  const carouselItems = useMemo<CarouselItem[]>(
+    () => visible.map(({ watch }) => ({ key: watch.id, title: watch.movie.title, posterPath: watch.movie.poster_path })),
+    [visible],
+  )
 
   if (watches.length === 0) {
     return (
@@ -53,6 +98,8 @@ export function Watched() {
         <span className="text-sm text-muted">{t.watched.count(visible.length)}</span>
       </div>
 
+      <ViewSwitcher value={view} onChange={setView} />
+
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2" role="group" aria-label={t.watched.sortLabel}>
           <span className="text-sm font-bold text-muted">{t.watched.sortLabel}</span>
@@ -68,6 +115,10 @@ export function Watched() {
 
       {visible.length === 0 ? (
         <p className="py-8 text-center text-muted">{t.watched.emptyFiltered}</p>
+      ) : view === 'carousel' ? (
+        <Carousel items={carouselItems} onOpen={(index) => navigate(`/watch/${visible[index].watch.id}`)}>
+          {(index) => <WatchCard watch={visible[index].watch} score={visible[index].score} />}
+        </Carousel>
       ) : (
         <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
           {visible.map(({ watch, score }) => (

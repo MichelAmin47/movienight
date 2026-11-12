@@ -79,6 +79,8 @@ There is no settings table: the suggestion filters ("16+ films tonen",
 "hide unknown rating") are per device in `localStorage` (`src/lib/prefs.ts`).
 The unsaved *Snel toevoegen* selection (movies plus scores) is also kept per
 device, in `localStorage` under `filmavond.bulkDraft` (`src/pages/BulkAdd.tsx`).
+The grid/carousel choice on Gezien and Tips is remembered per page under
+`filmavond.view.<page>` (`useViewMode` in `src/lib/prefs.ts`).
 
 ### Code layout
 
@@ -87,8 +89,11 @@ src/i18n/strings.ts     all UI text
 src/lib/                supabase client, database types, tmdb client + cache,
                         suggestions.ts (pure scoring/sampling), kijkwijzer.ts
                         bulkSelection.ts (pure helpers for the bulk add selection)
+                        carousel.ts (pure ring window / random pick / spin target maths)
 src/state/              auth and household data contexts
-src/components/         shared UI; `Toast` in ui.tsx for short confirmations
+src/components/         shared UI; `Toast` in ui.tsx for short confirmations;
+                        `Carousel` (3D poster ring, styles in index.css) and
+                        `ViewSwitcher` for the carousel view on Gezien and Tips
 src/pages/              one file per screen
 supabase/functions/tmdb single-file Deno proxy (no local imports)
 supabase/migrations/    reference only
