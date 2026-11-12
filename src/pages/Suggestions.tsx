@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Carousel, type CarouselItem } from '../components/Carousel'
 import { PersonFilter } from '../components/PersonFilter'
 import { Poster } from '../components/Poster'
 import { Button, ErrorNote, PageTitle, Spinner } from '../components/ui'
+import { ViewSwitcher } from '../components/ViewSwitcher'
 import { t } from '../i18n/strings'
 import type { Movie } from '../lib/database.types'
 import { isAllowed } from '../lib/kijkwijzer'
-import { usePrefs } from '../lib/prefs'
+import { usePrefs, useViewMode } from '../lib/prefs'
 import {
   buildPool,
   displayKey,
@@ -68,6 +70,9 @@ function pickRandom<T>(items: T[], count: number): T[] {
 export function Suggestions() {
   const { household, watches, people, dismissed, refresh } = useHousehold()
   const [prefs, setPrefs] = usePrefs()
+  const [view, setView] = useViewMode('suggestions')
+  /** Carousel view: the movie whose "more info" is open. */
+  const [infoId, setInfoId] = useState<number | null>(null)
   const [personId, setPersonId] = useState<string | null>(null)
   const [recommendations, setRecommendations] = useState(new Map<number, TmdbMovieSummary[]>())
   /** Candidate id → full movie row, or null when it could not be loaded. */
@@ -162,6 +167,16 @@ export function Suggestions() {
     }
     return result
   }, [order, details, prefs.showAdult, prefs.hideUnknown, shuffle])
+
+  const carouselItems = useMemo<CarouselItem[]>(
+    () =>
+      visible.map(({ candidate }) => ({
+        key: String(candidate.movie.id),
+        title: candidate.movie.title,
+        posterPath: candidate.movie.poster_path,
+      })),
+    [visible],
+  )
 
   const pendingKey = pending.join(',')
   useEffect(() => {
@@ -320,6 +335,8 @@ export function Suggestions() {
         <p className="mt-1 text-muted">{t.suggestions.intro}</p>
       </div>
 
+      <ViewSwitcher value={view} onChange={setView} />
+
       <PersonFilter people={people} value={personId} onChange={changePerson} label={t.suggestions.basedOn} />
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-2xl bg-raised px-3 py-1">
@@ -351,6 +368,54 @@ export function Suggestions() {
         <Spinner label={t.suggestions.loading} />
       ) : (
         <>
+          {view === 'carousel' ? (
+            <Carousel
+              items={carouselItems}
+              spinDisabled={loading}
+              // There is no detail page for a movie that is not watched yet: show its info in the card.
+              onOpen={(index) => setInfoId(visible[index].candidate.movie.id)}
+            >
+              {(index) => {
+                const { candidate, certification } = visible[index]
+                const { movie } = candidate
+                const runtime = details.get(movie.id)?.runtime
+                const infoOpen = infoId === movie.id
+                return (
+                  <>
+                    <h2 className="text-xl leading-tight font-extrabold text-balance">{movie.title}</h2>
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
+                      {releaseYear(movie.release_date)}
+                      <span className={`rounded-full bg-raised px-2 py-0.5 text-xs font-bold ${certification ? 'text-good' : ''}`}>
+                        {certification ? t.suggestions.ageLabel(certification) : t.suggestions.unknownAge}
+                      </span>
+                      {runtime ? <span>{t.common.minutes(runtime)}</span> : null}
+                    </p>
+                    <p className="text-sm font-bold text-accent">{explanation(candidate)}</p>
+                    {infoOpen && <p className="text-sm text-muted">{movie.overview || t.carousel.noInfo}</p>}
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      <Link
+                        to={`/add/${movie.id}`}
+                        className="inline-flex min-h-11 items-center rounded-2xl bg-accent px-4 text-sm font-bold text-on-accent"
+                      >
+                        ✓ {t.carousel.watched}
+                      </Link>
+                      <Button variant="secondary" className="min-h-11 px-4 text-sm" onClick={() => void dismiss(movie.id)}>
+                        {t.carousel.dismiss}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="min-h-11 px-4 text-sm"
+                        aria-expanded={infoOpen}
+                        onClick={() => setInfoId(infoOpen ? null : movie.id)}
+                      >
+                        {infoOpen ? t.carousel.lessInfo : t.carousel.moreInfo}
+                      </Button>
+                    </div>
+                  </>
+                )
+              }}
+            </Carousel>
+          ) : (
           <ol className="flex flex-col gap-3">
             {visible.map(({ candidate, certification }) => {
               const { movie } = candidate
@@ -387,6 +452,7 @@ export function Suggestions() {
               )
             })}
           </ol>
+          )}
           {loading ? (
             <Spinner label={t.suggestions.loading} />
           ) : (
