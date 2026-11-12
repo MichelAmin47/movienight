@@ -71,10 +71,23 @@ filters apply as in the default view.
 
 The age filter settings are stored per device in `localStorage`.
 
+**A stable list.** `src/lib/tipsStore.ts` computes a list completely
+(recommendations, ranking and the certification lookups for 20 tips plus a
+buffer of 8) before the page shows it; until then the page shows a skeleton.
+The finished list is cached in `localStorage`, keyed by a hash of its inputs
+(watched movies and ratings, dismissed movies, filters, selected person), so a
+revisit with the same inputs shows it at once without any request. When the
+inputs change, the old list stays on screen while the new one is computed and
+is then replaced in one go, or, when the user is scrolled down or the carousel
+is spinning, behind a *Nieuwe tips beschikbaar* button. A shuffle is stored as
+the current list in the same way. Dismissing a movie replaces only that tile
+with the next tip from the buffer.
+
 ### Caching
 
 - Movie details and certifications: the `movies` table (shared by all users).
 - Recommendations (7 days) and genre names (30 days): `localStorage`.
+- The finished Tips lists (the last 5 input combinations): `localStorage`.
 - Search results: in memory for the visit.
 
 Certifications are only looked up for as many top-ranked candidates as are

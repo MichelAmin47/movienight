@@ -136,6 +136,11 @@ body {
   animation: carousel-fade 280ms ease-out;
 }
 
+/* A tip that takes the place of a dismissed one. */
+.tip-enter {
+  animation: carousel-fade 200ms ease-out;
+}
+
 @keyframes carousel-confetti {
   0% {
     opacity: 1;
