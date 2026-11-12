@@ -1,4 +1,5 @@
 import type { Movie, MovieInsert } from './database.types'
+import { nlCertification, type TmdbReleaseDates } from './kijkwijzer'
 import { supabase } from './supabase'
 
 /** The subset of a TMDB movie list item the app uses (search, recommendations). */
@@ -23,11 +24,8 @@ type TmdbMovieDetails = {
   genres: TmdbGenre[]
   runtime: number | null
   overview: string
-  release_dates?: {
-    results: { iso_3166_1: string; release_dates: { certification: string; type: number }[] }[]
-  }
+  release_dates?: TmdbReleaseDates
 }
-
 
 const DAY = 24 * 60 * 60 * 1000
 const CACHE_PREFIX = 'filmavond.tmdb.'
@@ -122,17 +120,6 @@ export async function getRecommendations(tmdbId: number): Promise<TmdbMovieSumma
   const results = data.results.map(slim)
   cacheWrite(key, results)
   return results
-}
-
-/**
- * Picks the Dutch certification from TMDB release dates, preferring the
- * theatrical release (type 3). Returns null when NL has none.
- */
-export function nlCertification(details: Pick<TmdbMovieDetails, 'release_dates'>): string | null {
-  const nl = details.release_dates?.results.find((r) => r.iso_3166_1 === 'NL')
-  const withCertification = (nl?.release_dates ?? []).filter((d) => d.certification.trim())
-  const best = withCertification.find((d) => d.type === 3) ?? withCertification[0]
-  return best ? best.certification.trim().toUpperCase() : null
 }
 
 async function fetchMovie(tmdbId: number): Promise<MovieInsert> {

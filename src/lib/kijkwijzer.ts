@@ -18,3 +18,19 @@ export function isAllowed(certification: string | null | undefined, maxAge: MaxA
   if (age === null) return null
   return age <= (certificationAge(maxAge) ?? 0)
 }
+
+/** Shape of TMDB's `release_dates` (sub)response. */
+export type TmdbReleaseDates = {
+  results: { iso_3166_1: string; release_dates: { certification: string; type: number }[] }[]
+}
+
+/**
+ * Picks the Dutch certification from TMDB release dates, preferring the
+ * theatrical release (type 3). Returns null when NL has none.
+ */
+export function nlCertification(details: { release_dates?: TmdbReleaseDates }): string | null {
+  const nl = details.release_dates?.results.find((r) => r.iso_3166_1 === 'NL')
+  const withCertification = (nl?.release_dates ?? []).filter((d) => d.certification.trim())
+  const best = withCertification.find((d) => d.type === 3) ?? withCertification[0]
+  return best ? best.certification.trim().toUpperCase() : null
+}

@@ -1,21 +1,19 @@
 import { useState } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
-import { Button, ErrorNote, PageTitle, Spinner } from './components/ui'
+import { Button, ErrorNote, Spinner } from './components/ui'
 import { t } from './i18n/strings'
 import { AddWatch } from './pages/AddWatch'
 import { Login } from './pages/Login'
 import { Onboarding } from './pages/Onboarding'
 import { Search } from './pages/Search'
 import { Settings } from './pages/Settings'
+import { Stats } from './pages/Stats'
+import { Suggestions } from './pages/Suggestions'
 import { WatchDetail } from './pages/WatchDetail'
 import { Watched } from './pages/Watched'
 import { AuthProvider, useAuth } from './state/auth'
 import { HouseholdProvider, useHousehold } from './state/household'
-
-function Placeholder({ title }: { title: string }) {
-  return <PageTitle>{title}</PageTitle>
-}
 
 function SignedIn({ userId }: { userId: string }) {
   const { loading, error, household, people, refresh } = useHousehold()
@@ -46,8 +44,8 @@ function SignedIn({ userId }: { userId: string }) {
           <Route path="watch/:id" element={<WatchDetail />} />
           <Route path="add" element={<Search />} />
           <Route path="add/:tmdbId" element={<AddWatch />} />
-          <Route path="suggestions" element={<Placeholder title={t.suggestions.title} />} />
-          <Route path="stats" element={<Placeholder title={t.stats.title} />} />
+          <Route path="suggestions" element={<Suggestions />} />
+          <Route path="stats" element={<Stats />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
