@@ -77,6 +77,8 @@ RPCs: `create_household(household_name)`, `ping()`.
 
 There is no settings table: the suggestion filters ("16+ films tonen",
 "hide unknown rating") are per device in `localStorage` (`src/lib/prefs.ts`).
+The unsaved *Snel toevoegen* selection (movies plus scores) is also kept per
+device, in `localStorage` under `filmavond.bulkDraft` (`src/pages/BulkAdd.tsx`).
 
 ### Code layout
 
@@ -84,8 +86,9 @@ There is no settings table: the suggestion filters ("16+ films tonen",
 src/i18n/strings.ts     all UI text
 src/lib/                supabase client, database types, tmdb client + cache,
                         suggestions.ts (pure scoring/sampling), kijkwijzer.ts
+                        bulkSelection.ts (pure helpers for the bulk add selection)
 src/state/              auth and household data contexts
-src/components/         shared UI
+src/components/         shared UI; `Toast` in ui.tsx for short confirmations
 src/pages/              one file per screen
 supabase/functions/tmdb single-file Deno proxy (no local imports)
 supabase/migrations/    reference only
