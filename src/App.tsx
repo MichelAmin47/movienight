@@ -3,8 +3,10 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Button, ErrorNote, PageTitle, Spinner } from './components/ui'
 import { t } from './i18n/strings'
+import { AddWatch } from './pages/AddWatch'
 import { Login } from './pages/Login'
 import { Onboarding } from './pages/Onboarding'
+import { Search } from './pages/Search'
 import { Settings } from './pages/Settings'
 import { AuthProvider, useAuth } from './state/auth'
 import { HouseholdProvider, useHousehold } from './state/household'
@@ -39,7 +41,8 @@ function SignedIn({ userId }: { userId: string }) {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Placeholder title={t.watched.title} />} />
-          <Route path="add" element={<Placeholder title={t.search.title} />} />
+          <Route path="add" element={<Search />} />
+          <Route path="add/:tmdbId" element={<AddWatch />} />
           <Route path="suggestions" element={<Placeholder title={t.suggestions.title} />} />
           <Route path="stats" element={<Placeholder title={t.stats.title} />} />
           <Route path="settings" element={<Settings />} />
