@@ -33,9 +33,9 @@ export function PersonFilter({
           onClick={() => onChange(person.id)}
           title={person.name}
           ariaLabel={person.name}
-          className="px-2"
+          className="p-0.5"
         >
-          <PersonAvatar person={person} size="sm" />
+          <PersonAvatar person={person} size="chip" />
         </Chip>
       ))}
     </div>
