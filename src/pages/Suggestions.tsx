@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Carousel, type CarouselItem } from '../components/Carousel'
+import { GenreChips } from '../components/GenreChips'
 import { PersonFilter } from '../components/PersonFilter'
 import { Poster } from '../components/Poster'
 import { Button, ErrorNote, PageTitle } from '../components/ui'
 import { ViewSwitcher } from '../components/ViewSwitcher'
+import { WatchlistStar } from '../components/WatchlistStar'
 import { t } from '../i18n/strings'
 import type { Person } from '../lib/database.types'
 import { usePrefs, useViewMode, type ViewMode } from '../lib/prefs'
@@ -12,6 +14,7 @@ import { ratedMovies, sourceMovies } from '../lib/suggestions'
 import { supabase } from '../lib/supabase'
 import { TipsStore, type Tip } from '../lib/tipsStore'
 import { discoverMovies, ensureMovies, getGenres, getRecommendations, releaseYear } from '../lib/tmdb'
+import { useGenreNames } from '../lib/useGenres'
 import { useHousehold } from '../state/household'
 
 /** How long a dismissed tile takes to fade out (matches `duration-200`). */
@@ -74,7 +77,10 @@ function TipsSkeleton({ view }: { view: ViewMode }) {
 }
 
 export function Suggestions() {
-  const { household, watches, people, dismissed, refresh } = useHousehold()
+  const { household, watches, people, dismissed, watchlistIds, refresh } = useHousehold()
+  const navigate = useNavigate()
+  const genreNames = useGenreNames()
+  const watchlist = useMemo(() => [...watchlistIds], [watchlistIds])
   const [prefs, setPrefs] = usePrefs()
   const [view, setView] = useViewMode('suggestions')
   /** Carousel view: the movie whose "more info" is open. */
@@ -113,11 +119,12 @@ export function Suggestions() {
       householdId,
       watches,
       dismissed,
+      watchlist,
       personId,
       showAdult: prefs.showAdult,
       hideUnknown: prefs.hideUnknown,
     })
-  }, [store, householdId, watches, dismissed, personId, prefs.showAdult, prefs.hideUnknown])
+  }, [store, householdId, watches, dismissed, watchlist, personId, prefs.showAdult, prefs.hideUnknown])
   useEffect(() => () => store.dispose(), [store])
 
   const hasSources = useMemo(() => sourceMovies(ratedMovies(watches, personId)).length > 0, [watches, personId])
@@ -237,8 +244,7 @@ export function Suggestions() {
             <Carousel
               items={carouselItems}
               onSpinChange={onSpinChange}
-              // There is no detail page for a movie that is not watched yet: show its info in the card.
-              onOpen={(index) => setInfoId(tips[index].id)}
+              onOpen={(index) => navigate(`/movie/${tips[index].id}`)}
             >
               {(index) => {
                 const tip = tips[index]
@@ -246,7 +252,12 @@ export function Suggestions() {
                 const infoOpen = infoId === tip.id
                 return (
                   <>
-                    <h2 className="text-xl leading-tight font-extrabold text-balance">{tip.title}</h2>
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-xl leading-tight font-extrabold text-balance">
+                        <Link to={`/movie/${tip.id}`}>{tip.title}</Link>
+                      </h2>
+                      <WatchlistStar tmdbId={tip.id} title={tip.title} className="-mt-2 -mr-2" />
+                    </div>
                     <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
                       {releaseYear(tip.releaseDate)}
                       <span className={`rounded-full bg-raised px-2 py-0.5 text-xs font-bold ${certification ? 'text-good' : ''}`}>
@@ -254,6 +265,7 @@ export function Suggestions() {
                       </span>
                       {runtime ? <span>{t.common.minutes(runtime)}</span> : null}
                     </p>
+                    <GenreChips genreIds={tip.genreIds} names={genreNames} max={3} />
                     <p className="text-sm font-bold text-accent">{explanation(tip, person)}</p>
                     {infoOpen && <p className="text-sm text-muted">{tip.overview || t.carousel.noInfo}</p>}
                     <div className="mt-1 flex flex-wrap gap-2">
@@ -290,9 +302,16 @@ export function Suggestions() {
                     leaving.includes(tip.id) ? 'opacity-0' : ''
                   } ${entered.includes(tip.id) ? 'tip-enter' : ''}`}
                 >
-                  <Poster path={tip.posterPath} title={tip.title} className="w-24 shrink-0 self-start" />
+                  <Link to={`/movie/${tip.id}`} className="w-24 shrink-0 self-start" aria-hidden tabIndex={-1}>
+                    <Poster path={tip.posterPath} title={tip.title} />
+                  </Link>
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                    <h2 className="text-lg leading-tight font-extrabold text-balance">{tip.title}</h2>
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-lg leading-tight font-extrabold text-balance">
+                        <Link to={`/movie/${tip.id}`}>{tip.title}</Link>
+                      </h2>
+                      <WatchlistStar tmdbId={tip.id} title={tip.title} className="-mt-2 -mr-2" />
+                    </div>
                     <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
                       {releaseYear(tip.releaseDate)}
                       <span
@@ -303,6 +322,7 @@ export function Suggestions() {
                         {certification ? t.suggestions.ageLabel(certification) : t.suggestions.unknownAge}
                       </span>
                     </p>
+                    <GenreChips genreIds={tip.genreIds} names={genreNames} max={3} />
                     <p className="text-sm font-bold text-accent">{explanation(tip, person)}</p>
                     {tip.overview && <p className="line-clamp-3 text-sm text-muted">{tip.overview}</p>}
                     <div className="mt-1 flex flex-wrap gap-2">

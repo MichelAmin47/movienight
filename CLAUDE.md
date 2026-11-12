@@ -65,6 +65,7 @@ One household, one shared watched list.
 | `watches` | One row per viewing. `watched_on` is nullable: null means "Eerder gekeken" and must be sent as an explicit `null` (omitting it defaults to today) |
 | `ratings` | `(watch_id, person_id)` → score 1–5 |
 | `dismissed` | Suggestions the household is not interested in |
+| `watchlist` | "Willen we zien": `(household_id, tmdb_id)` → `added_at`, `note` (unused so far). References `movies`, so upsert the movie first |
 
 Storage: private bucket `avatars` (max 2 MB, webp/jpeg/png), objects at
 `<household_id>/<person_id>-<timestamp>.webp`, readable and writable by
@@ -82,7 +83,19 @@ device, in `localStorage` under `filmavond.bulkDraft` (`src/pages/BulkAdd.tsx`).
 The grid/carousel choice on Gezien and Tips is remembered per page under
 `filmavond.view.<page>` (`useViewMode` in `src/lib/prefs.ts`).
 The finished Tips lists are cached per device in `localStorage` under
-`filmavond.tips`, keyed by a hash of their inputs (`src/lib/tipsStore.ts`).
+`filmavond.tips`, keyed by a hash of their inputs, the watchlist ids included
+(`src/lib/tipsStore.ts`).
+
+The watchlist lives in the household context (`src/state/household.tsx`):
+`watchlist`, `watchlistIds` (includes changes that are still being saved) and
+`toggleWatchlist` (optimistic, rolls back on error). Always toggle through
+`<WatchlistStar>`. Saving a watch in the add flow takes the movie off the
+watchlist. Tips shows 20 movies that are not on the watchlist plus at most 3
+that are (the best scored ones, or the first 3 drawn in a shuffle).
+
+Navigation: Gezien, Tips, Toevoegen, Willen we zien, Instellingen. The stats
+page is a subpage of Instellingen (`/settings/stats`). `/movie/:tmdbId` is the
+detail page of a movie that is not necessarily watched (tips, watchlist).
 
 ### Code layout
 
@@ -92,12 +105,14 @@ src/lib/                supabase client, database types, tmdb client + cache,
                         suggestions.ts (pure scoring/sampling), kijkwijzer.ts
                         bulkSelection.ts (pure helpers for the bulk add selection)
                         carousel.ts (pure ring window / random pick / spin target maths)
+                        useGenres.ts (Dutch genre names, one request per visit, cached a month)
                         tipsStore.ts (the Tips list: computes it completely before
                         publishing, caches it, handles dismiss/shuffle; no React, I/O injected)
 src/state/              auth and household data contexts
 src/components/         shared UI; `Toast` in ui.tsx for short confirmations;
                         `Carousel` (3D poster ring, styles in index.css) and
-                        `ViewSwitcher` for the carousel view on Gezien and Tips
+                        `ViewSwitcher` for the carousel view on Gezien, Tips and
+                        Willen we zien; `GenreChips`; `WatchlistStar`
 src/pages/              one file per screen
 supabase/functions/tmdb single-file Deno proxy (no local imports)
 supabase/migrations/    reference only

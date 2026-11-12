@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { CopyCode } from '../components/CopyCode'
 import { PeopleEditor } from '../components/PeopleEditor'
 import { Button, Card, ErrorNote, PageTitle, TextInput } from '../components/ui'
@@ -57,6 +58,22 @@ export function Settings() {
   return (
     <div className="flex flex-col gap-5">
       <PageTitle>{t.settings.title}</PageTitle>
+
+      <Link
+        to="/settings/stats"
+        className="flex min-h-16 items-center gap-3 rounded-3xl border border-line bg-surface px-4 py-2 hover:bg-raised"
+      >
+        <span className="text-2xl" aria-hidden>
+          📊
+        </span>
+        <span className="flex-1">
+          <span className="block font-bold">{t.settings.stats}</span>
+          <span className="block text-sm text-muted">{t.settings.statsHint}</span>
+        </span>
+        <span aria-hidden className="text-xl text-muted">
+          ›
+        </span>
+      </Link>
 
       <Card className="flex flex-col gap-3">
         <h2 className="text-lg font-extrabold">{t.people.title}</h2>

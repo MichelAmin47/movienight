@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Poster } from '../components/Poster'
+import { WatchlistStar } from '../components/WatchlistStar'
 import { ErrorNote, PageTitle, Spinner, TextInput } from '../components/ui'
 import { t } from '../i18n/strings'
 import { releaseYear } from '../lib/tmdb'
@@ -8,7 +9,7 @@ import { MIN_QUERY_LENGTH, useMovieSearch } from '../lib/useMovieSearch'
 import { useHousehold } from '../state/household'
 
 export function Search() {
-  const { watches } = useHousehold()
+  const { watches, watchlistIds } = useHousehold()
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get('q') ?? ''
   const { movies: current, error } = useMovieSearch(query)
@@ -55,10 +56,10 @@ export function Search() {
       ) : (
         <ul className="flex flex-col gap-2">
           {current.map((movie) => (
-            <li key={movie.id}>
+            <li key={movie.id} className="flex items-center gap-1 rounded-2xl border border-line bg-surface">
               <Link
                 to={`/add/${movie.id}`}
-                className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-2 hover:bg-raised"
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-2 hover:bg-raised"
               >
                 <Poster path={movie.poster_path} title={movie.title} size="w154" className="w-16 shrink-0 rounded-xl" />
                 <span className="min-w-0 flex-1">
@@ -73,11 +74,17 @@ export function Search() {
                       ✓ {t.search.alreadyWatched}
                     </span>
                   )}
+                  {watchlistIds.has(movie.id) && (
+                    <span className="mt-1 ml-1 inline-block rounded-full bg-raised px-2 py-0.5 text-xs font-bold text-muted">
+                      {t.search.onWatchlist}
+                    </span>
+                  )}
                 </span>
-                <span aria-hidden className="pr-2 text-xl text-muted">
+                <span aria-hidden className="text-xl text-muted">
                   ›
                 </span>
               </Link>
+              <WatchlistStar tmdbId={movie.id} title={movie.title} className="mr-1 min-h-12 min-w-12" />
             </li>
           ))}
         </ul>
