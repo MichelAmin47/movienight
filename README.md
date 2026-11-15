@@ -125,6 +125,8 @@ build time; the configuration is in `vite.config.ts`.
   foreground, at most once an hour (`src/lib/pwa.ts`).
 - **Login.** The magic link opens in Chrome; the installed app shares Chrome's
   storage, so it is signed in as well.
+- **Pull-to-refresh** is left on, also in the installed app: it is the only
+  manual reload there.
 - **Icons.** `node scripts/generate-icons.mjs` renders `public/favicon.svg` and
   the PNGs in `public/` (needs Playwright, which is not a project dependency).
   The output is committed.

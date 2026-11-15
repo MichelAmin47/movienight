@@ -68,17 +68,6 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/*
- * Installed app: there is no browser chrome, so pulling down at the top would
- * reload the whole app in the middle of a swipe (carousel, cropping a photo).
- */
-@media (display-mode: standalone) {
-  html,
-  body {
-    overscroll-behavior-y: none;
-  }
-}
-
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
