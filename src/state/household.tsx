@@ -131,7 +131,9 @@ export function HouseholdProvider({ userId, children }: { userId: string; childr
       setData(await loadHousehold(userId))
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      // Supabase errors are plain objects with a `message`, not always `Error`s.
+      const message = (e as { message?: unknown } | null)?.message
+      setError(typeof message === 'string' ? message : String(e))
     } finally {
       setLoading(false)
     }

@@ -103,6 +103,35 @@ list for the new watchlist is computed on the next visit.
 Certifications are only looked up for as many top-ranked candidates as are
 needed to fill the list.
 
+### Installable app (PWA)
+
+The app can be installed from Chrome on Android ("Add to home screen", or the
+*Installeer als app* button in Instellingen) and then opens standalone.
+`vite-plugin-pwa` generates the manifest and the service worker (`sw.js`) at
+build time; the configuration is in `vite.config.ts`.
+
+- **Scope.** Another PWA is hosted on the same origin, so the manifest `id`,
+  `start_url` and `scope` and the service worker scope are all `/movienight/`.
+  Never widen them to the origin root.
+- **Precache.** The app shell (HTML, JS, CSS, icons) is precached, so the app
+  starts without a network. Without a connection it shows its own
+  "Geen verbinding" screen (`OfflineNotice` in `src/components/Pwa.tsx`).
+- **Not cached.** Supabase requests (database, auth, storage, Edge Functions)
+  have no route in the service worker and always go to the network.
+- **Posters.** `image.tmdb.org` is cache-first, at most 200 images for 30 days.
+- **Updates.** A new service worker takes over immediately; the open page then
+  shows "Nieuwe versie beschikbaar — Vernieuwen" instead of reloading by
+  itself. An open app checks for a new version when it returns to the
+  foreground, at most once an hour (`src/lib/pwa.ts`).
+- **Login.** The magic link opens in Chrome; the installed app shares Chrome's
+  storage, so it is signed in as well.
+- **Icons.** `node scripts/generate-icons.mjs` renders `public/favicon.svg` and
+  the PNGs in `public/` (needs Playwright, which is not a project dependency).
+  The output is committed.
+
+There is no service worker in `npm run dev`; use `npm run build` followed by
+`npm run preview` to try it locally.
+
 ## Running locally
 
 Requires Node 22.
@@ -163,10 +192,11 @@ Supabase project is not paused for inactivity.
 ```
 src/
   i18n/strings.ts   all UI text (Dutch)
-  lib/              Supabase client, database types, TMDB client, scoring
+  lib/              Supabase client, database types, TMDB client, scoring, PWA
   state/            auth and household data contexts
   components/       shared UI
   pages/            one file per screen
+scripts/            icon generator
 supabase/
   functions/tmdb/   TMDB proxy Edge Function
   migrations/       schema, for reference only

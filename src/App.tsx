@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { OfflineNotice, OfflineScreen, UpdateToast } from './components/Pwa'
 import { Button, ErrorNote, Spinner } from './components/ui'
 import { t } from './i18n/strings'
+import { isNetworkError } from './lib/network'
 import { AddWatch } from './pages/AddWatch'
 import { BulkAdd } from './pages/BulkAdd'
 import { BackLink } from './components/MovieHeader'
@@ -36,8 +38,19 @@ function SignedIn({ userId }: { userId: string }) {
   // during onboarding does not kick the user out of the flow.
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null)
 
+  // A start without connection ends in the error state; pick the data up by
+  // itself once the connection is back.
+  useEffect(() => {
+    if (!error) return
+    const retry = () => void refresh()
+    window.addEventListener('online', retry)
+    return () => window.removeEventListener('online', retry)
+  }, [error, refresh])
+
   if (loading) return <Spinner />
   if (error) {
+    // The device can claim to be online without a working connection.
+    if (isNetworkError(error)) return <OfflineNotice onRetry={() => void refresh()} />
     return (
       <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
         <ErrorNote>{t.common.genericError}</ErrorNote>
@@ -88,6 +101,8 @@ export default function App() {
   return (
     <AuthProvider>
       <Root />
+      <UpdateToast />
+      <OfflineScreen />
     </AuthProvider>
   )
 }

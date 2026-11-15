@@ -13,10 +13,10 @@ const items = [
 export function Layout() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col">
-      <main className="flex-1 px-4 pt-6 pb-8">
+      <main className="flex-1 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-8">
         <Outlet />
       </main>
-      <footer className="px-4 pb-28 text-center text-xs text-muted">
+      <footer className="px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] text-center text-xs text-muted">
         <p className="mx-auto max-w-md">{t.footer.tmdb}</p>
         <a
           href="https://www.themoviedb.org/"
@@ -29,7 +29,7 @@ export function Layout() {
       </footer>
       <nav
         aria-label={t.appName}
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] backdrop-blur"
       >
         <ul className="mx-auto flex max-w-3xl">
           {items.map((item) => (
