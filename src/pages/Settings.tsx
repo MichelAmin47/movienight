@@ -5,6 +5,7 @@ import { PeopleEditor } from '../components/PeopleEditor'
 import { Button, Card, ErrorNote, PageTitle, TextInput } from '../components/ui'
 import { t } from '../i18n/strings'
 import { usePrefs } from '../lib/prefs'
+import { promptInstall, usePwa } from '../lib/pwa'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../state/auth'
 import { useHousehold } from '../state/household'
@@ -15,6 +16,7 @@ export function Settings() {
   const { session } = useAuth()
   const { household, memberCount, refresh } = useHousehold()
   const [prefs, setPrefs] = usePrefs()
+  const { canInstall } = usePwa()
   const [name, setName] = useState(household?.name ?? '')
   const [code, setCode] = useState('')
   const [accountMessage, setAccountMessage] = useState<{ ok: boolean; text: string } | null>(null)
@@ -154,6 +156,16 @@ export function Settings() {
           <CopyCode code={session.user.id} />
         </details>
       </Card>
+
+      {canInstall && (
+        <Card className="flex flex-col gap-3">
+          <h2 className="text-lg font-extrabold">{t.pwa.installTitle}</h2>
+          <p className="text-sm text-muted">{t.pwa.installHint}</p>
+          <Button variant="secondary" onClick={() => void promptInstall()}>
+            {t.pwa.install}
+          </Button>
+        </Card>
+      )}
 
       <Card className="flex flex-col gap-3">
         <p className="text-sm text-muted">{t.settings.signedInAs(session.user.email ?? '')}</p>

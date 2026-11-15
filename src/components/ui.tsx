@@ -94,7 +94,7 @@ export function Chip({
 /** Short confirmation that floats above the page; the caller decides when it disappears. */
 export function Toast({ children }: { children: ReactNode }) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-4 z-30 flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-30 flex justify-center px-4">
       <p role="status" className="rounded-full bg-ink px-5 py-3 text-sm font-bold text-canvas shadow-lg">
         {children}
       </p>

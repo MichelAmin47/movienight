@@ -61,6 +61,8 @@ html {
 
 body {
   margin: 0;
+  /* Landscape with a notch or camera cutout (viewport-fit=cover). */
+  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
   min-height: 100dvh;
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;

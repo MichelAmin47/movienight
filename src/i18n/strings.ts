@@ -78,6 +78,15 @@ export const nl = {
     confirmDelete: (name: string) =>
       `${name} verwijderen? Alle sterren van ${name} worden ook verwijderd.`,
   },
+  pwa: {
+    updateAvailable: 'Nieuwe versie beschikbaar',
+    reload: 'Vernieuwen',
+    offlineTitle: 'Geen verbinding',
+    offlineBody: 'Probeer het later opnieuw.',
+    installTitle: 'App',
+    installHint: 'Zet Filmavond op je startscherm, dan opent het als een gewone app.',
+    install: 'Installeer als app',
+  },
   settings: {
     title: 'Instellingen',
     household: 'Gezin',
